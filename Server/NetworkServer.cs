@@ -169,40 +169,40 @@ namespace Server
         {
             try
             {
-                using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
+                var stream = client.GetStream();
+                while (client.Connected)
                 {
-                    while (client.Connected)
+                    var assetName = await reader.ReadLineAsync();
+                    if (string.IsNullOrEmpty(assetName)) break;
+
+                    if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || assetName.Contains(".."))
                     {
-                        var assetName = await reader.ReadLineAsync();
-                        if (string.IsNullOrEmpty(assetName)) break;
+                        Console.WriteLine($"Rejected request for invalid asset name: {assetName}");
+                        continue;
+                    }
 
-                        if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || assetName.Contains(".."))
-                        {
-                            Console.WriteLine($"Rejected request for invalid asset name: {assetName}");
-                            continue;
-                        }
+                    var assetsDir = Path.Combine(AppContext.BaseDirectory, "assets");
+                    var assetPath = Path.GetFullPath(Path.Combine(assetsDir, assetName));
 
-                        var assetsDir = Path.Combine(AppContext.BaseDirectory, "assets");
-                        var assetPath = Path.GetFullPath(Path.Combine(assetsDir, assetName));
+                    if (!assetPath.StartsWith(assetsDir))
+                    {
+                        Console.WriteLine($"Rejected request for asset outside asset directory: {assetName}");
+                        continue;
+                    }
 
-                        if (!assetPath.StartsWith(assetsDir))
-                        {
-                            Console.WriteLine($"Rejected request for asset outside asset directory: {assetName}");
-                            continue;
-                        }
-
-                        if (File.Exists(assetPath))
-                        {
-                            var fileBytes = await File.ReadAllBytesAsync(assetPath);
-                            var base64Content = Convert.ToBase64String(fileBytes);
-                            await writer.WriteLineAsync(base64Content);
-                            Console.WriteLine($"Sent asset '{assetName}' to client.");
-                        }
-                        else
-                        {
-                            await writer.WriteLineAsync("");
-                            Console.WriteLine($"Asset '{assetName}' not found.");
-                        }
+                    if (File.Exists(assetPath))
+                    {
+                        var fileBytes = await File.ReadAllBytesAsync(assetPath);
+                        var length = (long)fileBytes.Length;
+                        await stream.WriteAsync(BitConverter.GetBytes(length), 0, sizeof(long));
+                        await stream.WriteAsync(fileBytes, 0, fileBytes.Length);
+                        Console.WriteLine($"Sent asset '{assetName}' to client.");
+                    }
+                    else
+                    {
+                        var length = (long)-1;
+                        await stream.WriteAsync(BitConverter.GetBytes(length), 0, sizeof(long));
+                        Console.WriteLine($"Asset '{assetName}' not found.");
                     }
                 }
             }

@@ -146,7 +146,6 @@ namespace Client
                 using var assetClient = new TcpClient(_serverIp, _serverPort);
                 using var assetStream = assetClient.GetStream();
                 using var assetWriter = new StreamWriter(assetStream, leaveOpen: true) { AutoFlush = true };
-                using var assetReader = new StreamReader(assetStream, leaveOpen: true);
 
                 await assetWriter.WriteLineAsync(NetworkConstants.AssetConnection);
 
@@ -159,14 +158,23 @@ namespace Client
                     }
 
                     await assetWriter.WriteLineAsync(assetName);
-                    var base64Content = await assetReader.ReadLineAsync();
-                    if (!string.IsNullOrEmpty(base64Content))
+
+                    var lengthBuffer = new byte[sizeof(long)];
+                    await assetStream.ReadExactlyAsync(lengthBuffer, 0, sizeof(long));
+                    var length = BitConverter.ToInt64(lengthBuffer, 0);
+
+                    if (length == -1)
                     {
-                        var fileBytes = Convert.FromBase64String(base64Content);
-                        var assetPath = Path.Combine(serverAssetDir, assetName);
-                        await File.WriteAllBytesAsync(assetPath, fileBytes);
-                        Console.WriteLine($"Downloaded asset: {assetPath}");
+                        Console.WriteLine($"Asset '{assetName}' not found on server.");
+                        continue;
                     }
+
+                    var fileBytes = new byte[length];
+                    await assetStream.ReadExactlyAsync(fileBytes, 0, (int)length);
+
+                    var assetPath = Path.Combine(serverAssetDir, assetName);
+                    await File.WriteAllBytesAsync(assetPath, fileBytes);
+                    Console.WriteLine($"Downloaded asset: {assetPath}");
                 }
                 await assetWriter.WriteLineAsync(""); // Signal end of requests
             }
