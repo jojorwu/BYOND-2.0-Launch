@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Avalonia.Threading;
 using Silk.NET.OpenGL;
 using SilkWindow = Silk.NET.Windowing.Window;
@@ -28,29 +29,32 @@ namespace Launcher
 
         private void CheckGlVersion()
         {
-            var options = Silk.NET.Windowing.WindowOptions.Default;
-            options.IsVisible = false;
-            var glWindow = SilkWindow.Create(options);
-            glWindow.Load += () =>
+            Task.Run(() =>
             {
-                var gl = GL.GetApi(glWindow);
-                var version = gl.GetStringS(StringName.Version);
-                glWindow.Close();
-
-                var match = Regex.Match(version, @"^(\d+)\.(\d+)");
-                if (match.Success && int.Parse(match.Groups[1].Value) >= 3 && int.Parse(match.Groups[2].Value) >= 3)
+                var options = Silk.NET.Windowing.WindowOptions.Default;
+                options.IsVisible = false;
+                var glWindow = SilkWindow.Create(options);
+                glWindow.Load += () =>
                 {
-                    return;
-                }
+                    var gl = GL.GetApi(glWindow);
+                    var version = gl.GetStringS(StringName.Version);
+                    glWindow.Close();
 
-                Dispatcher.UIThread.Post(() =>
-                {
-                    ErrorTextBlock.Text = $"Your system's OpenGL version ({version}) is not supported. Please update your graphics drivers to support at least OpenGL 3.3.";
-                    ErrorTextBlock.IsVisible = true;
-                    ConnectButton.IsEnabled = false;
-                });
-            };
-            glWindow.Run(() => { });
+                    var match = Regex.Match(version, @"^(\d+)\.(\d+)");
+                    if (match.Success && int.Parse(match.Groups[1].Value) >= 3 && int.Parse(match.Groups[2].Value) >= 3)
+                    {
+                        return;
+                    }
+
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        ErrorTextBlock.Text = $"Your system's OpenGL version ({version}) is not supported. Please update your graphics drivers to support at least OpenGL 3.3.";
+                        ErrorTextBlock.IsVisible = true;
+                        ConnectButton.IsEnabled = false;
+                    });
+                };
+                glWindow.Run(() => { });
+            });
         }
 
         private void LoadServers()

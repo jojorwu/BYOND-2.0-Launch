@@ -5,6 +5,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Collections.Concurrent;
+using Core;
 
 namespace Client
 {
@@ -55,7 +57,7 @@ namespace Client
                 _stream = _tcpClient.GetStream();
                 using (var writer = new StreamWriter(_stream, leaveOpen: true) { AutoFlush = true })
                 {
-                    await writer.WriteLineAsync("PRIMARY");
+                    await writer.WriteLineAsync(NetworkConstants.PrimaryConnection);
                 }
                 Console.WriteLine("Connected to server with PRIMARY connection.");
 
@@ -116,12 +118,18 @@ namespace Client
                 var assetList = await reader.ReadLineAsync();
                 if (string.IsNullOrEmpty(assetList)) return;
 
-                var assetNames = assetList.Split(',');
+                var assetNames = new ConcurrentQueue<string>(assetList.Split(','));
                 var serverAssetDir = Path.Combine(AppContext.BaseDirectory, "assets", $"{_serverIp}_{_serverPort}");
                 Directory.CreateDirectory(serverAssetDir);
 
-                var downloadTasks = assetNames.Select(assetName => DownloadAssetAsync(assetName, serverAssetDir)).ToList();
-                await Task.WhenAll(downloadTasks);
+                const int numWorkers = 4;
+                var workerTasks = new List<Task>();
+                for (int i = 0; i < numWorkers; i++)
+                {
+                    workerTasks.Add(AssetDownloadWorker(assetNames, serverAssetDir));
+                }
+
+                await Task.WhenAll(workerTasks);
 
                 Console.WriteLine("All assets downloaded.");
             }
@@ -131,14 +139,8 @@ namespace Client
             }
         }
 
-        private async Task DownloadAssetAsync(string assetName, string serverAssetDir)
+        private async Task AssetDownloadWorker(ConcurrentQueue<string> assetNames, string serverAssetDir)
         {
-            if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || assetName.Contains(".."))
-            {
-                Console.WriteLine($"Rejected asset with invalid name: {assetName}");
-                return;
-            }
-
             try
             {
                 using var assetClient = new TcpClient(_serverIp, _serverPort);
@@ -146,21 +148,31 @@ namespace Client
                 using var assetWriter = new StreamWriter(assetStream, leaveOpen: true) { AutoFlush = true };
                 using var assetReader = new StreamReader(assetStream, leaveOpen: true);
 
-                await assetWriter.WriteLineAsync("ASSET");
-                await assetWriter.WriteLineAsync(assetName);
+                await assetWriter.WriteLineAsync(NetworkConstants.AssetConnection);
 
-                var base64Content = await assetReader.ReadLineAsync();
-                if (!string.IsNullOrEmpty(base64Content))
+                while (assetNames.TryDequeue(out var assetName))
                 {
-                    var fileBytes = Convert.FromBase64String(base64Content);
-                    var assetPath = Path.Combine(serverAssetDir, assetName);
-                    await File.WriteAllBytesAsync(assetPath, fileBytes);
-                    Console.WriteLine($"Downloaded asset: {assetPath}");
+                    if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || assetName.Contains(".."))
+                    {
+                        Console.WriteLine($"Rejected asset with invalid name: {assetName}");
+                        continue;
+                    }
+
+                    await assetWriter.WriteLineAsync(assetName);
+                    var base64Content = await assetReader.ReadLineAsync();
+                    if (!string.IsNullOrEmpty(base64Content))
+                    {
+                        var fileBytes = Convert.FromBase64String(base64Content);
+                        var assetPath = Path.Combine(serverAssetDir, assetName);
+                        await File.WriteAllBytesAsync(assetPath, fileBytes);
+                        Console.WriteLine($"Downloaded asset: {assetPath}");
+                    }
                 }
+                await assetWriter.WriteLineAsync(""); // Signal end of requests
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error downloading asset '{assetName}': {ex.Message}");
+                Console.WriteLine($"Error in asset download worker: {ex.Message}");
             }
         }
 

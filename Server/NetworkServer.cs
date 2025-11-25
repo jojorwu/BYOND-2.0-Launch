@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Core;
 
 namespace Server
 {
@@ -80,7 +81,7 @@ namespace Server
 
                 switch (connectionType)
                 {
-                    case "PRIMARY":
+                    case NetworkConstants.PrimaryConnection:
                         Console.WriteLine($"Connection from {client.Client.RemoteEndPoint} established as PRIMARY.");
                         lock (_clientsLock)
                         {
@@ -89,9 +90,8 @@ namespace Server
                         await HandleClientCommunication(client);
                         break;
 
-                    case "ASSET":
+                    case NetworkConstants.AssetConnection:
                         await HandleAssetRequestConnection(client, reader);
-                        client.Close();
                         break;
 
                     default:
@@ -171,27 +171,48 @@ namespace Server
             {
                 using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
                 {
-                    var assetName = await reader.ReadLineAsync();
-                    if (string.IsNullOrEmpty(assetName)) return;
+                    while (client.Connected)
+                    {
+                        var assetName = await reader.ReadLineAsync();
+                        if (string.IsNullOrEmpty(assetName)) break;
 
-                    var assetPath = Path.Combine(AppContext.BaseDirectory, "assets", assetName);
-                    if (File.Exists(assetPath))
-                    {
-                        var fileBytes = await File.ReadAllBytesAsync(assetPath);
-                        var base64Content = Convert.ToBase64String(fileBytes);
-                        await writer.WriteLineAsync(base64Content);
-                        Console.WriteLine($"Sent asset '{assetName}' to client via ASSET connection.");
-                    }
-                    else
-                    {
-                        await writer.WriteLineAsync("");
-                        Console.WriteLine($"Asset '{assetName}' not found for ASSET connection.");
+                        if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || assetName.Contains(".."))
+                        {
+                            Console.WriteLine($"Rejected request for invalid asset name: {assetName}");
+                            continue;
+                        }
+
+                        var assetsDir = Path.Combine(AppContext.BaseDirectory, "assets");
+                        var assetPath = Path.GetFullPath(Path.Combine(assetsDir, assetName));
+
+                        if (!assetPath.StartsWith(assetsDir))
+                        {
+                            Console.WriteLine($"Rejected request for asset outside asset directory: {assetName}");
+                            continue;
+                        }
+
+                        if (File.Exists(assetPath))
+                        {
+                            var fileBytes = await File.ReadAllBytesAsync(assetPath);
+                            var base64Content = Convert.ToBase64String(fileBytes);
+                            await writer.WriteLineAsync(base64Content);
+                            Console.WriteLine($"Sent asset '{assetName}' to client.");
+                        }
+                        else
+                        {
+                            await writer.WriteLineAsync("");
+                            Console.WriteLine($"Asset '{assetName}' not found.");
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error handling asset request: {ex.Message}");
+            }
+            finally
+            {
+                client.Close();
             }
         }
 

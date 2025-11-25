@@ -12,4 +12,8 @@
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="NetworkConstants.cs" />
+  </ItemGroup>
+
 </Project>
