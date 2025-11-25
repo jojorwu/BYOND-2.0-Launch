@@ -18,6 +18,12 @@ namespace Client
         private readonly object _lock = new object();
         private Thread _thread;
         private bool _isRunning;
+        private readonly HashSet<string> _assetWhitelist = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".png", ".jpg", ".jpeg", ".gif", ".bmp", // Images
+            ".lua",                                 // Scripts
+            ".json", ".xml", ".txt"                  // Data
+        };
         public const int TicksPerSecond = 30;
         public const float TimeStep = 1.0f / TicksPerSecond;
         private int _nextId = 0;
@@ -118,7 +124,16 @@ namespace Client
                 var assetList = await reader.ReadLineAsync();
                 if (string.IsNullOrEmpty(assetList)) return;
 
-                var assetNames = new ConcurrentQueue<string>(assetList.Split(','));
+                var filteredAssets = assetList.Split(',')
+                    .Where(assetName => _assetWhitelist.Contains(Path.GetExtension(assetName)))
+                    .ToList();
+
+                foreach (var assetName in assetList.Split(',').Except(filteredAssets))
+                {
+                    Console.WriteLine($"Rejected asset with non-whitelisted extension: {assetName}");
+                }
+
+                var assetNames = new ConcurrentQueue<string>(filteredAssets);
                 var serverAssetDir = Path.Combine(AppContext.BaseDirectory, "assets", $"{_serverIp}_{_serverPort}");
                 Directory.CreateDirectory(serverAssetDir);
 
