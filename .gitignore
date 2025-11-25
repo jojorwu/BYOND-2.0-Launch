@@ -1,6 +1,0 @@
-# Log files
-*.log
-
-# Build artifacts
-[Bb]in/
-[Oo]bj/

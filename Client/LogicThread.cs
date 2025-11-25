@@ -3,10 +3,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Linq;
-using System.Collections.Concurrent;
-using Core;
 
 namespace Client
 {
@@ -18,12 +14,6 @@ namespace Client
         private readonly object _lock = new object();
         private Thread _thread;
         private bool _isRunning;
-        private readonly HashSet<string> _assetWhitelist = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".png", ".jpg", ".jpeg", ".gif", ".bmp", // Images
-            ".lua",                                 // Scripts
-            ".json", ".xml", ".txt"                  // Data
-        };
         public const int TicksPerSecond = 30;
         public const float TimeStep = 1.0f / TicksPerSecond;
         private int _nextId = 0;
@@ -55,19 +45,15 @@ namespace Client
             _tcpClient?.Close();
         }
 
-        private async void GameLoop()
+        private void GameLoop()
         {
             try
             {
                 _tcpClient = new TcpClient(_serverIp, _serverPort);
                 _stream = _tcpClient.GetStream();
-                using (var writer = new StreamWriter(_stream, leaveOpen: true) { AutoFlush = true })
-                {
-                    await writer.WriteLineAsync(NetworkConstants.PrimaryConnection);
-                }
-                Console.WriteLine("Connected to server with PRIMARY connection.");
+                Console.WriteLine("Connected to server.");
 
-                await HandleAssetTransfer();
+                HandleAssetTransfer();
             }
             catch (Exception ex)
             {
@@ -116,86 +102,38 @@ namespace Client
             }
         }
 
-        private async Task HandleAssetTransfer()
+        private void HandleAssetTransfer()
         {
             try
             {
-                using var reader = new StreamReader(_stream, leaveOpen: true);
-                var assetList = await reader.ReadLineAsync();
-                if (string.IsNullOrEmpty(assetList)) return;
-
-                var filteredAssets = assetList.Split(',')
-                    .Where(assetName => _assetWhitelist.Contains(Path.GetExtension(assetName)))
-                    .ToList();
-
-                foreach (var assetName in assetList.Split(',').Except(filteredAssets))
+                using (var reader = new StreamReader(_stream, leaveOpen: true))
+                using (var writer = new StreamWriter(_stream, leaveOpen: true) { AutoFlush = true })
                 {
-                    Console.WriteLine($"Rejected asset with non-whitelisted extension: {assetName}");
+                    var assetList = reader.ReadLine();
+                    if (string.IsNullOrEmpty(assetList)) return;
+
+                    var assetNames = assetList.Split(',');
+                    var serverAssetDir = Path.Combine(AppContext.BaseDirectory, "assets", $"{_serverIp}_{_serverPort}");
+                    Directory.CreateDirectory(serverAssetDir);
+
+                    foreach (var assetName in assetNames)
+                    {
+                        writer.WriteLine(assetName);
+                        var lengthStr = reader.ReadLine();
+                        if (int.TryParse(lengthStr, out int length) && length > 0)
+                        {
+                            var buffer = new byte[length];
+                            _stream.Read(buffer, 0, length);
+                            var assetPath = Path.Combine(serverAssetDir, assetName);
+                            File.WriteAllBytes(assetPath, buffer);
+                            Console.WriteLine($"Downloaded asset: {assetPath}");
+                        }
+                    }
                 }
-
-                var assetNames = new ConcurrentQueue<string>(filteredAssets);
-                var serverAssetDir = Path.Combine(AppContext.BaseDirectory, "assets", $"{_serverIp}_{_serverPort}");
-                Directory.CreateDirectory(serverAssetDir);
-
-                const int numWorkers = 4;
-                var workerTasks = new List<Task>();
-                for (int i = 0; i < numWorkers; i++)
-                {
-                    workerTasks.Add(AssetDownloadWorker(assetNames, serverAssetDir));
-                }
-
-                await Task.WhenAll(workerTasks);
-
-                Console.WriteLine("All assets downloaded.");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in asset transfer: {ex.Message}");
-            }
-        }
-
-        private async Task AssetDownloadWorker(ConcurrentQueue<string> assetNames, string serverAssetDir)
-        {
-            try
-            {
-                using var assetClient = new TcpClient(_serverIp, _serverPort);
-                using var assetStream = assetClient.GetStream();
-                using var assetWriter = new StreamWriter(assetStream, leaveOpen: true) { AutoFlush = true };
-
-                await assetWriter.WriteLineAsync(NetworkConstants.AssetConnection);
-
-                while (assetNames.TryDequeue(out var assetName))
-                {
-                    if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || assetName.Contains(".."))
-                    {
-                        Console.WriteLine($"Rejected asset with invalid name: {assetName}");
-                        continue;
-                    }
-
-                    await assetWriter.WriteLineAsync(assetName);
-
-                    var lengthBuffer = new byte[sizeof(long)];
-                    await assetStream.ReadExactlyAsync(lengthBuffer, 0, sizeof(long));
-                    var length = BitConverter.ToInt64(lengthBuffer, 0);
-
-                    if (length == -1)
-                    {
-                        Console.WriteLine($"Asset '{assetName}' not found on server.");
-                        continue;
-                    }
-
-                    var fileBytes = new byte[length];
-                    await assetStream.ReadExactlyAsync(fileBytes, 0, (int)length);
-
-                    var assetPath = Path.Combine(serverAssetDir, assetName);
-                    await File.WriteAllBytesAsync(assetPath, fileBytes);
-                    Console.WriteLine($"Downloaded asset: {assetPath}");
-                }
-                await assetWriter.WriteLineAsync(""); // Signal end of requests
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in asset download worker: {ex.Message}");
             }
         }
 
