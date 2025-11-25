@@ -1,0 +1,33 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Launcher"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Launcher.MainWindow"
+        Title="BYOND 2.0 Launcher">
+    <Grid ColumnDefinitions="*,2*" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto">
+        <ListBox Grid.Row="1" Grid.Column="0" Margin="5" Name="ServerList" SelectionChanged="ServerList_SelectionChanged">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:Server}">
+                    <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Grid.Row="0" Grid.Column="1" Margin="5">Server Details</TextBlock>
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Margin="5">Name:</TextBlock>
+        <TextBox Grid.Row="2" Grid.Column="1" Margin="5" Name="NameTextBox" />
+
+        <TextBlock Grid.Row="3" Grid.Column="0" Margin="5">IP Address:</TextBlock>
+        <TextBox Grid.Row="3" Grid.Column="1" Margin="5" Name="IpAddressTextBox" />
+
+        <TextBlock Grid.Row="4" Grid.Column="0" Margin="5">Port:</TextBlock>
+        <TextBox Grid.Row="4" Grid.Column="1" Margin="5" Name="PortTextBox" />
+
+        <Button Grid.Row="5" Grid.Column="1" Margin="5" Name="AddButton" Click="AddButton_Click">Add</Button>
+        <Button Grid.Row="6" Grid.Column="1" Margin="5" Name="DeleteButton" Click="DeleteButton_Click">Delete</Button>
+        <Button Grid.Row="7" Grid.Column="1" Margin="5" Name="ConnectButton" Click="ConnectButton_Click">Connect</Button>
+    </Grid>
+</Window>
