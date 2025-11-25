@@ -1,18 +1,22 @@
 # BYOND-2.0
 
-## Building the Launcher Installer (Windows)
+## Building and Running on Linux
 
-To create the `setup.exe` installer for the launcher, you will need to have [Inno Setup](https://jrsoftware.org/isinfo.php) installed.
-
-Once Inno Setup is installed, follow these steps:
-
-1.  **Publish the Launcher:**
-    Open a command prompt or PowerShell and run the following command from the root of the repository:
+1.  **Publish the Launcher and Client:**
+    Open a terminal and run the following commands from the root of the repository:
     ```sh
-    dotnet publish Launcher -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+    dotnet publish Launcher -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true
+    dotnet publish Client -c Release -r linux-x64 --self-contained true /p:PublishSingleFile=true
     ```
 
-2.  **Compile the Installer Script:**
-    - Open the Inno Setup Compiler.
-    - Go to `File > Open` and select the `launcher_installer.iss` script from the root of the repository.
-    - Go to `Build > Compile` to generate the `BYOND_2.0_Launcher_Setup.exe` file in the `installer` directory.
+2.  **Create the Linux Package:**
+    Run the packaging script from the root of the repository:
+    ```sh
+    chmod +x create_linux_package.sh
+    ./create_linux_package.sh
+    ```
+    This will create a `BYOND_2.0_Linux.tar.gz` archive.
+
+3.  **Run the Launcher:**
+    - Extract the archive: `tar -xzvf BYOND_2.0_Linux.tar.gz`
+    - Navigate to the extracted directory and run the launcher: `./Launcher`

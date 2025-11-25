@@ -25,6 +25,7 @@ bld/
 
 # Installer output
 installer/
+BYOND_2.0_Linux.tar.gz
 
 # NuGet Packages
 *.nupkg
