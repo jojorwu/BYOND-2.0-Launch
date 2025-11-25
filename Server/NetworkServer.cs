@@ -8,9 +8,6 @@ using System.Threading.Tasks;
 
 namespace Server
 {
-    /// <summary>
-    /// Manages TCP client connections for the game server.
-    /// </summary>
     public class NetworkServer : IDisposable
     {
         private readonly TcpListener _listener;
@@ -18,19 +15,12 @@ namespace Server
         private readonly List<TcpClient> _clients = new List<TcpClient>();
         private readonly object _clientsLock = new object();
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="NetworkServer"/> class.
-        /// </summary>
-        /// <param name="port">The port to listen on.</param>
         public NetworkServer(int port)
         {
             _listener = new TcpListener(IPAddress.Any, port);
             _cancellationTokenSource = new CancellationTokenSource();
         }
 
-        /// <summary>
-        /// Starts the server and begins listening for client connections.
-        /// </summary>
         public void Start()
         {
             try
@@ -55,10 +45,7 @@ namespace Server
                     HandleNewClient(client);
                 }
             }
-            catch (OperationCanceledException)
-            {
-                // Expected when the server is stopped
-            }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error accepting client: {ex.Message}");
@@ -77,19 +64,14 @@ namespace Server
 
         private async Task HandleClientCommunication(TcpClient client)
         {
-            await SendAssetList(client);
-            await ReceiveAssetRequests(client);
-        }
-
-        private async Task SendAssetList(TcpClient client)
-        {
             try
             {
+                using var stream = client.GetStream();
+                using var reader = new StreamReader(stream);
+                using var writer = new StreamWriter(stream) { AutoFlush = true };
+
                 var assetsDir = Path.Combine(AppContext.BaseDirectory, "assets");
-                if (!Directory.Exists(assetsDir))
-                {
-                    Directory.CreateDirectory(assetsDir);
-                }
+                Directory.CreateDirectory(assetsDir);
 
                 var assetFiles = Directory.GetFiles(assetsDir);
                 var assetNames = new List<string>();
@@ -98,64 +80,55 @@ namespace Server
                     assetNames.Add(Path.GetFileName(file));
                 }
 
-                var message = string.Join(",", assetNames);
-                using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
-                {
-                    await writer.WriteLineAsync(message);
-                }
+                await writer.WriteLineAsync(string.Join(",", assetNames));
 
-                Console.WriteLine($"Sent asset list to client: {message}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error sending asset list: {ex.Message}");
-            }
-        }
-
-        private async Task ReceiveAssetRequests(TcpClient client)
-        {
-            try
-            {
-                using (var reader = new StreamReader(client.GetStream(), leaveOpen: true))
-                using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
+                while (client.Connected)
                 {
-                    while (client.Connected)
+                    var requestedFile = await reader.ReadLineAsync();
+                    if (requestedFile == null || requestedFile == "done")
                     {
-                        var assetName = await reader.ReadLineAsync();
-                        if (assetName == null) break;
+                        break;
+                    }
 
-                        var assetPath = Path.Combine(AppContext.BaseDirectory, "assets", assetName);
-                        if (File.Exists(assetPath))
-                        {
-                            var fileBytes = await File.ReadAllBytesAsync(assetPath);
-                            await writer.WriteLineAsync(fileBytes.Length.ToString());
-                            await client.GetStream().WriteAsync(fileBytes, 0, fileBytes.Length);
-                            Console.WriteLine($"Sent asset '{assetName}' to client.");
-                        }
-                        else
-                        {
-                            await writer.WriteLineAsync("0");
-                            Console.WriteLine($"Asset '{assetName}' not found.");
-                        }
+                    var safeFileName = Path.GetFileName(requestedFile);
+                    var filePath = Path.Combine(assetsDir, safeFileName);
+
+                    if (File.Exists(filePath))
+                    {
+                        var fileBytes = await File.ReadAllBytesAsync(filePath);
+                        var base64Content = Convert.ToBase64String(fileBytes);
+                        await writer.WriteLineAsync(base64Content);
+                    }
+                    else
+                    {
+                        await writer.WriteLineAsync("error:not_found");
                     }
                 }
             }
+            catch (IOException ex) when (ex.InnerException is SocketException)
+            {
+                Console.WriteLine("Client disconnected (SocketException).");
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error receiving asset requests: {ex.Message}");
+                Console.WriteLine($"Error during client communication: {ex.Message}");
+            }
+            finally
+            {
+                client.Close();
+                lock(_clientsLock)
+                {
+                    _clients.Remove(client);
+                }
             }
         }
 
-        /// <summary>
-        /// Stops the server and disconnects all clients.
-        /// </summary>
         public void Stop()
         {
             try
             {
                 _cancellationTokenSource.Cancel();
                 _listener.Stop();
-
                 lock (_clientsLock)
                 {
                     foreach (var client in _clients)
@@ -172,9 +145,6 @@ namespace Server
             }
         }
 
-        /// <summary>
-        /// Disposes the network server resources.
-        /// </summary>
         public void Dispose()
         {
             Stop();

@@ -6,143 +6,45 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Launcher.MainWindow"
         Title="BYOND 2.0 Launcher"
-        Width="850" Height="500"
-        WindowStartupLocation="CenterScreen"
-        Background="#1E1E1E"
-        TransparencyLevelHint="Mica"
-        ExtendClientAreaToDecorationsHint="True">
+        Width="600" Height="350">
+    <DockPanel Margin="10">
+        <StackPanel DockPanel.Dock="Left" Width="200" Margin="0,0,10,0" Spacing="5">
+            <TextBlock FontSize="18" FontWeight="Bold">Servers</TextBlock>
+            <Border Padding="5" BorderThickness="1" BorderBrush="Gray">
+                <ListBox Name="ServerList" SelectionChanged="ServerList_SelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type local:Server}">
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+        </StackPanel>
 
-    <!-- Стили для кнопок и списков -->
-    <Window.Styles>
-        <Style Selector="Button.Action">
-            <Setter Property="Background" Value="#0078D7"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="Button.Action:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#0099FF"/>
-        </Style>
+        <Panel>
+            <StackPanel VerticalAlignment="Top">
+                <TextBlock FontSize="18" FontWeight="Bold" Margin="0,0,0,10">Server Details</TextBlock>
 
-        <Style Selector="ListBoxItem">
-            <Setter Property="Padding" Value="10"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Margin" Value="0,2"/>
-        </Style>
-    </Window.Styles>
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,10">
+                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">Name:</TextBlock>
+                    <TextBox Grid.Row="0" Grid.Column="1" Name="NameTextBox" />
 
-    <Grid RowDefinitions="35, *">
-        <!-- Заголовок окна в стиле Windows 11 -->
-        <TextBlock Grid.Row="0" Text="BYOND 2.0" VerticalAlignment="Center" Margin="15,0" FontWeight="Bold" Opacity="0.6"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">IP Address:</TextBlock>
+                    <TextBox Grid.Row="1" Grid.Column="1" Margin="0,5,0,0" Name="IpAddressTextBox" />
 
-        <TabControl Grid.Row="1" Margin="0,5,0,0">
-
-            <!-- ВКЛАДКА 1: ИГРАТЬ -->
-            <TabItem Header="Play" FontSize="16" FontWeight="Medium">
-                <Grid ColumnDefinitions="280, *" Margin="15">
-
-                    <!-- ЛЕВАЯ КОЛОНКА: Список серверов -->
-                    <DockPanel Grid.Column="0" Margin="0,0,15,0">
-                        <!-- Панель управления списком -->
-                        <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,10,0,0">
-                            <Button Name="AddButton" Click="AddButton_Click" Content="Add New Server" HorizontalAlignment="Stretch"/>
-                            <Button Name="DeleteButton" Click="DeleteButton_Click" Content="Remove Server" Background="#333333" HorizontalAlignment="Stretch"/>
-                        </StackPanel>
-
-                        <TextBlock Text="Server Browser" FontWeight="Bold" Margin="0,0,0,8" Opacity="0.8"/>
-
-                        <Border BorderBrush="#333" BorderThickness="1" CornerRadius="6" Background="#252526">
-                            <ListBox Name="ServerList" SelectionChanged="ServerList_SelectionChanged" Background="Transparent">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type local:Server}">
-                                        <Grid ColumnDefinitions="Auto, *">
-                                            <!-- Звездочка избранного -->
-                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsFavorite}" IsHitTestVisible="False" Margin="0,0,10,0" VerticalAlignment="Center"/>
-
-                                            <!-- Инфо о сервере -->
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14"/>
-                                                <StackPanel Orientation="Horizontal" Spacing="5" Opacity="0.7">
-                                                    <TextBlock Text="{Binding IpAddress}" FontSize="11"/>
-                                                    <TextBlock Text=":" FontSize="11"/>
-                                                    <TextBlock Text="{Binding Port}" FontSize="11"/>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Border>
-                    </DockPanel>
-
-                    <!-- ПРАВАЯ КОЛОНКА: Детали и Подключение -->
-                    <Border Grid.Column="1" Background="#252526" CornerRadius="8" Padding="25">
-                        <Grid RowDefinitions="Auto, *, Auto">
-                            <StackPanel Grid.Row="0" Spacing="15">
-                                <TextBlock Text="Connection Details" FontSize="20" FontWeight="Bold"/>
-                                <Separator Background="#444" Margin="0,0,0,10"/>
-
-                                <!-- Форма редактирования -->
-                                <Grid ColumnDefinitions="100, *" RowDefinitions="Auto,Auto,Auto" Margin="0,5">
-                                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Foreground="#CCC">Name:</TextBlock>
-                                    <TextBox Grid.Row="0" Grid.Column="1" Name="NameTextBox" Watermark="My Favorite Server"/>
-
-                                    <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,12" Foreground="#CCC">IP Address:</TextBlock>
-                                    <TextBox Grid.Row="1" Grid.Column="1" Name="IpAddressTextBox" Margin="0,12" Watermark="127.0.0.1"/>
-
-                                    <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Foreground="#CCC">Port:</TextBlock>
-                                    <TextBox Grid.Row="2" Grid.Column="1" Name="PortTextBox" Watermark="7777"/>
-                                </Grid>
-
-                                <CheckBox Name="FavoriteCheckBox" Content="Add to Favorites"
-                                          Checked="FavoriteCheckBox_Changed" Unchecked="FavoriteCheckBox_Changed"/>
-                            </StackPanel>
-
-                            <!-- Место для будущего описания сервера или картинки -->
-                            <TextBlock Grid.Row="1" Text="Select a server to connect."
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Opacity="0.3" FontStyle="Italic"
-                                       IsVisible="{Binding ElementName=NameTextBox, Path=!Text.Length}"/>
-
-                            <!-- Кнопка подключения -->
-                            <Button Grid.Row="2" Name="ConnectButton" Click="ConnectButton_Click"
-                                    Classes="Action"
-                                    Content="JOIN GAME"
-                                    Height="55" FontSize="18"
-                                    HorizontalAlignment="Stretch"
-                                    IsEnabled="False"/> <!-- Включается кодом при выборе -->
-                        </Grid>
-                    </Border>
+                    <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">Port:</TextBlock>
+                    <TextBox Grid.Row="2" Grid.Column="1" Margin="0,5,0,0" Name="PortTextBox" />
                 </Grid>
-            </TabItem>
 
-            <!-- ВКЛАДКА 2: НАСТРОЙКИ -->
-            <TabItem Header="Settings">
-                <StackPanel Margin="30" Spacing="15">
-                    <TextBlock Text="Client Configuration" FontSize="22" FontWeight="Light"/>
-                    <Separator Background="#444"/>
-
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="Display" FontWeight="Bold" Margin="0,10,0,0"/>
-                        <CheckBox Content="Fullscreen Mode"/>
-                        <CheckBox Content="Enable VSync"/>
-
-                        <TextBlock Text="Profile" FontWeight="Bold" Margin="0,10,0,0"/>
-                        <Grid ColumnDefinitions="120, *">
-                            <TextBlock Text="Username:" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Watermark="Guest" Width="200" HorizontalAlignment="Left"/>
-                        </Grid>
-                    </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <Button Name="AddButton" Click="AddButton_Click" Content="Add"/>
+                    <Button Name="DeleteButton" Click="DeleteButton_Click" Content="Delete"/>
                 </StackPanel>
-            </TabItem>
+            </StackPanel>
 
-        </TabControl>
-
-        <!-- Панель ошибок -->
-        <TextBlock Grid.Row="1" Name="ErrorTextBlock" Foreground="#FF5555" Margin="20"
-                   VerticalAlignment="Bottom" HorizontalAlignment="Center"
-                   Background="#111" Padding="10" IsVisible="False"/>
-    </Grid>
+            <Button Name="ConnectButton" Click="ConnectButton_Click" Content="Connect"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
+                    IsDefault="True"/>
+        </Panel>
+    </DockPanel>
 </Window>
