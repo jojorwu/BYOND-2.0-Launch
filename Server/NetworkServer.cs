@@ -128,13 +128,13 @@ namespace Server
                         if (File.Exists(assetPath))
                         {
                             var fileBytes = await File.ReadAllBytesAsync(assetPath);
-                            await writer.WriteLineAsync(fileBytes.Length.ToString());
-                            await client.GetStream().WriteAsync(fileBytes, 0, fileBytes.Length);
+                            var base64Content = Convert.ToBase64String(fileBytes);
+                            await writer.WriteLineAsync(base64Content);
                             Console.WriteLine($"Sent asset '{assetName}' to client.");
                         }
                         else
                         {
-                            await writer.WriteLineAsync("0");
+                            await writer.WriteLineAsync("");
                             Console.WriteLine($"Asset '{assetName}' not found.");
                         }
                     }

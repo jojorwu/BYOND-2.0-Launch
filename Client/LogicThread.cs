@@ -119,13 +119,12 @@ namespace Client
                     foreach (var assetName in assetNames)
                     {
                         writer.WriteLine(assetName);
-                        var lengthStr = reader.ReadLine();
-                        if (int.TryParse(lengthStr, out int length) && length > 0)
+                        var base64Content = reader.ReadLine();
+                        if (!string.IsNullOrEmpty(base64Content))
                         {
-                            var buffer = new byte[length];
-                            _stream.Read(buffer, 0, length);
+                            var fileBytes = Convert.FromBase64String(base64Content);
                             var assetPath = Path.Combine(serverAssetDir, assetName);
-                            File.WriteAllBytes(assetPath, buffer);
+                            File.WriteAllBytes(assetPath, fileBytes);
                             Console.WriteLine($"Downloaded asset: {assetPath}");
                         }
                     }
