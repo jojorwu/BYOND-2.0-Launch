@@ -19,8 +19,8 @@ namespace Client
         private int _nextId = 0;
         private readonly string _serverIp;
         private readonly int _serverPort;
-        private TcpClient? _tcpClient;
-        private NetworkStream? _stream;
+        private TcpClient _tcpClient;
+        private NetworkStream _stream;
 
         public LogicThread(string serverIp, int serverPort)
         {
@@ -45,7 +45,7 @@ namespace Client
             _tcpClient?.Close();
         }
 
-        private async void GameLoop()
+        private void GameLoop()
         {
             try
             {
@@ -53,7 +53,7 @@ namespace Client
                 _stream = _tcpClient.GetStream();
                 Console.WriteLine("Connected to server.");
 
-                await HandleAssetTransfer();
+                HandleAssetTransfer();
             }
             catch (Exception ex)
             {
@@ -102,39 +102,34 @@ namespace Client
             }
         }
 
-        private async Task HandleAssetTransfer()
+        private void HandleAssetTransfer()
         {
-            if (_stream == null) return;
             try
             {
-                using var reader = new StreamReader(_stream, leaveOpen: true);
-                using var writer = new StreamWriter(_stream, leaveOpen: true) { AutoFlush = true };
-
-                var assetList = reader.ReadLine();
-                if (string.IsNullOrEmpty(assetList)) return;
-
-                var assetNames = assetList.Split(',');
-                var serverAssetDir = Path.Combine(AppContext.BaseDirectory, "assets", $"{_serverIp}_{_serverPort}");
-                Directory.CreateDirectory(serverAssetDir);
-
-                foreach (var assetName in assetNames)
+                using (var reader = new StreamReader(_stream, leaveOpen: true))
+                using (var writer = new StreamWriter(_stream, leaveOpen: true) { AutoFlush = true })
                 {
-                    await writer.WriteLineAsync(assetName);
-                    var base64Content = await reader.ReadLineAsync();
+                    var assetList = reader.ReadLine();
+                    if (string.IsNullOrEmpty(assetList)) return;
 
-                    if (base64Content != null && !base64Content.StartsWith("error:"))
+                    var assetNames = assetList.Split(',');
+                    var serverAssetDir = Path.Combine(AppContext.BaseDirectory, "assets", $"{_serverIp}_{_serverPort}");
+                    Directory.CreateDirectory(serverAssetDir);
+
+                    foreach (var assetName in assetNames)
                     {
-                        var fileBytes = Convert.FromBase64String(base64Content);
-                        var assetPath = Path.Combine(serverAssetDir, assetName);
-                        await File.WriteAllBytesAsync(assetPath, fileBytes);
-                        Console.WriteLine($"Downloaded asset: {assetPath}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Failed to download asset '{assetName}': {base64Content}");
+                        writer.WriteLine(assetName);
+                        var lengthStr = reader.ReadLine();
+                        if (int.TryParse(lengthStr, out int length) && length > 0)
+                        {
+                            var buffer = new byte[length];
+                            _stream.Read(buffer, 0, length);
+                            var assetPath = Path.Combine(serverAssetDir, assetName);
+                            File.WriteAllBytes(assetPath, buffer);
+                            Console.WriteLine($"Downloaded asset: {assetPath}");
+                        }
                     }
                 }
-                writer.WriteLine("done");
             }
             catch (Exception ex)
             {
