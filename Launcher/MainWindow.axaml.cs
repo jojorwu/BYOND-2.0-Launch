@@ -119,10 +119,16 @@ namespace Launcher
         private void SortServers()
         {
             var sortedServers = _servers.OrderByDescending(s => s.IsFavorite).ToList();
-            _servers.Clear();
-            foreach (var server in sortedServers)
+
+            for (int newIndex = 0; newIndex < sortedServers.Count; newIndex++)
             {
-                _servers.Add(server);
+                var serverToMove = sortedServers[newIndex];
+                int oldIndex = _servers.IndexOf(serverToMove);
+
+                if (oldIndex != newIndex)
+                {
+                    _servers.Move(oldIndex, newIndex);
+                }
             }
         }
     }
