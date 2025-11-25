@@ -5,29 +5,46 @@
         xmlns:local="clr-namespace:Launcher"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Launcher.MainWindow"
-        Title="BYOND 2.0 Launcher">
-    <Grid ColumnDefinitions="*,2*" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto">
-        <ListBox Grid.Row="1" Grid.Column="0" Margin="5" Name="ServerList" SelectionChanged="ServerList_SelectionChanged">
-            <ListBox.ItemTemplate>
-                <DataTemplate DataType="{x:Type local:Server}">
-                    <TextBlock Text="{Binding Name}" />
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        Title="BYOND 2.0 Launcher"
+        Width="600" Height="350">
+    <DockPanel Margin="10">
+        <StackPanel DockPanel.Dock="Left" Width="200" Margin="0,0,10,0" Spacing="5">
+            <TextBlock FontSize="18" FontWeight="Bold">Servers</TextBlock>
+            <Border Padding="5" BorderThickness="1" BorderBrush="Gray">
+                <ListBox Name="ServerList" SelectionChanged="ServerList_SelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type local:Server}">
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+        </StackPanel>
 
-        <TextBlock Grid.Row="0" Grid.Column="1" Margin="5">Server Details</TextBlock>
+        <Panel>
+            <StackPanel VerticalAlignment="Top">
+                <TextBlock FontSize="18" FontWeight="Bold" Margin="0,0,0,10">Server Details</TextBlock>
 
-        <TextBlock Grid.Row="2" Grid.Column="0" Margin="5">Name:</TextBlock>
-        <TextBox Grid.Row="2" Grid.Column="1" Margin="5" Name="NameTextBox" />
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,10">
+                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">Name:</TextBlock>
+                    <TextBox Grid.Row="0" Grid.Column="1" Name="NameTextBox" />
 
-        <TextBlock Grid.Row="3" Grid.Column="0" Margin="5">IP Address:</TextBlock>
-        <TextBox Grid.Row="3" Grid.Column="1" Margin="5" Name="IpAddressTextBox" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">IP Address:</TextBlock>
+                    <TextBox Grid.Row="1" Grid.Column="1" Margin="0,5,0,0" Name="IpAddressTextBox" />
 
-        <TextBlock Grid.Row="4" Grid.Column="0" Margin="5">Port:</TextBlock>
-        <TextBox Grid.Row="4" Grid.Column="1" Margin="5" Name="PortTextBox" />
+                    <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">Port:</TextBlock>
+                    <TextBox Grid.Row="2" Grid.Column="1" Margin="0,5,0,0" Name="PortTextBox" />
+                </Grid>
 
-        <Button Grid.Row="5" Grid.Column="1" Margin="5" Name="AddButton" Click="AddButton_Click">Add</Button>
-        <Button Grid.Row="6" Grid.Column="1" Margin="5" Name="DeleteButton" Click="DeleteButton_Click">Delete</Button>
-        <Button Grid.Row="7" Grid.Column="1" Margin="5" Name="ConnectButton" Click="ConnectButton_Click">Connect</Button>
-    </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <Button Name="AddButton" Click="AddButton_Click" Content="Add"/>
+                    <Button Name="DeleteButton" Click="DeleteButton_Click" Content="Delete"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Button Name="ConnectButton" Click="ConnectButton_Click" Content="Connect"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
+                    IsDefault="True"/>
+        </Panel>
+    </DockPanel>
 </Window>

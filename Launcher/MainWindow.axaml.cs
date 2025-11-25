@@ -10,7 +10,7 @@ namespace Launcher
 {
     public partial class MainWindow : Window
     {
-        private ObservableCollection<Server> _servers;
+        private ObservableCollection<Server> _servers = new();
         private const string ServersFilePath = "servers.json";
 
         public MainWindow()
@@ -24,14 +24,15 @@ namespace Launcher
             if (File.Exists(ServersFilePath))
             {
                 var json = File.ReadAllText(ServersFilePath);
-                _servers = new ObservableCollection<Server>(JsonSerializer.Deserialize<List<Server>>(json));
+                var serversList = JsonSerializer.Deserialize<List<Server>>(json) ?? new List<Server>();
+                _servers = new ObservableCollection<Server>(serversList);
             }
             else
             {
                 _servers = new ObservableCollection<Server>();
             }
 
-            this.FindControl<ListBox>("ServerList").ItemsSource = _servers;
+            ServerList.ItemsSource = _servers;
         }
 
         private void SaveServers()
@@ -42,11 +43,17 @@ namespace Launcher
 
         private void AddButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
+            if (!int.TryParse(PortTextBox.Text, out var port))
+            {
+                Console.WriteLine("Invalid port number entered.");
+                return;
+            }
+
             var server = new Server
             {
-                Name = this.FindControl<TextBox>("NameTextBox").Text,
-                IpAddress = this.FindControl<TextBox>("IpAddressTextBox").Text,
-                Port = int.Parse(this.FindControl<TextBox>("PortTextBox").Text)
+                Name = NameTextBox.Text ?? string.Empty,
+                IpAddress = IpAddressTextBox.Text ?? string.Empty,
+                Port = port
             };
 
             _servers.Add(server);
@@ -55,8 +62,7 @@ namespace Launcher
 
         private void DeleteButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
-            var selectedServer = (Server)this.FindControl<ListBox>("ServerList").SelectedItem;
-            if (selectedServer != null)
+            if (ServerList.SelectedItem is Server selectedServer)
             {
                 _servers.Remove(selectedServer);
                 SaveServers();
@@ -65,29 +71,34 @@ namespace Launcher
 
         private void ConnectButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
-            var selectedServer = (Server)this.FindControl<ListBox>("ServerList").SelectedItem;
-            if (selectedServer != null)
+            if (ServerList.SelectedItem is Server selectedServer)
             {
                 try
                 {
-                    var clientPath = Path.Combine("..", "Client", "bin", "Debug", "net8.0", "Client");
+                    var launcherDir = AppContext.BaseDirectory;
+                    var clientPath = Path.Combine(launcherDir, "Client", "Client");
+
+                    if (OperatingSystem.IsWindows())
+                    {
+                        clientPath += ".exe";
+                    }
+
                     Process.Start(clientPath, $"{selectedServer.IpAddress} {selectedServer.Port}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to start client: {ex.Message}");
+                    Console.WriteLine($"Error launching client: {ex.Message}");
                 }
             }
         }
 
         private void ServerList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var selectedServer = (Server)this.FindControl<ListBox>("ServerList").SelectedItem;
-            if (selectedServer != null)
+            if (ServerList.SelectedItem is Server selectedServer)
             {
-                this.FindControl<TextBox>("NameTextBox").Text = selectedServer.Name;
-                this.FindControl<TextBox>("IpAddressTextBox").Text = selectedServer.IpAddress;
-                this.FindControl<TextBox>("PortTextBox").Text = selectedServer.Port.ToString();
+                NameTextBox.Text = selectedServer.Name;
+                IpAddressTextBox.Text = selectedServer.IpAddress;
+                PortTextBox.Text = selectedServer.Port.ToString();
             }
         }
     }

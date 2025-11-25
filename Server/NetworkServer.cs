@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -71,7 +72,78 @@ namespace Server
                 _clients.Add(client);
             }
             Console.WriteLine($"Client connected: {client.Client.RemoteEndPoint}");
-            // In a real application, you would start a new task here to handle communication with this client.
+            Task.Run(() => HandleClientCommunication(client));
+        }
+
+        private async Task HandleClientCommunication(TcpClient client)
+        {
+            await SendAssetList(client);
+            await ReceiveAssetRequests(client);
+        }
+
+        private async Task SendAssetList(TcpClient client)
+        {
+            try
+            {
+                var assetsDir = Path.Combine(AppContext.BaseDirectory, "assets");
+                if (!Directory.Exists(assetsDir))
+                {
+                    Directory.CreateDirectory(assetsDir);
+                }
+
+                var assetFiles = Directory.GetFiles(assetsDir);
+                var assetNames = new List<string>();
+                foreach (var file in assetFiles)
+                {
+                    assetNames.Add(Path.GetFileName(file));
+                }
+
+                var message = string.Join(",", assetNames);
+                using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
+                {
+                    await writer.WriteLineAsync(message);
+                }
+
+                Console.WriteLine($"Sent asset list to client: {message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending asset list: {ex.Message}");
+            }
+        }
+
+        private async Task ReceiveAssetRequests(TcpClient client)
+        {
+            try
+            {
+                using (var reader = new StreamReader(client.GetStream(), leaveOpen: true))
+                using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
+                {
+                    while (client.Connected)
+                    {
+                        var assetName = await reader.ReadLineAsync();
+                        if (assetName == null) break;
+
+                        var assetPath = Path.Combine(AppContext.BaseDirectory, "assets", assetName);
+                        if (File.Exists(assetPath))
+                        {
+                            var fileBytes = await File.ReadAllBytesAsync(assetPath);
+                            await writer.WriteLineAsync(fileBytes.Length.ToString());
+                            await client.GetStream().WriteAsync(fileBytes, 0, fileBytes.Length);
+                            Console.WriteLine($"Sent asset '{assetName}' to client.");
+                        }
+                        else
+                        {
+                            await writer.WriteLineAsync("0");
+                            Console.WriteLine($"Asset '{assetName}' not found.");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error receiving asset requests: {ex.Message}");
+            }
         }
 
         /// <summary>

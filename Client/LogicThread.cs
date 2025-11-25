@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Sockets;
 using System.Threading;
 
@@ -51,6 +52,8 @@ namespace Client
                 _tcpClient = new TcpClient(_serverIp, _serverPort);
                 _stream = _tcpClient.GetStream();
                 Console.WriteLine("Connected to server.");
+
+                HandleAssetTransfer();
             }
             catch (Exception ex)
             {
@@ -96,6 +99,41 @@ namespace Client
                     Update(TimeStep);
                     accumulator -= TimeStep;
                 }
+            }
+        }
+
+        private void HandleAssetTransfer()
+        {
+            try
+            {
+                using (var reader = new StreamReader(_stream, leaveOpen: true))
+                using (var writer = new StreamWriter(_stream, leaveOpen: true) { AutoFlush = true })
+                {
+                    var assetList = reader.ReadLine();
+                    if (string.IsNullOrEmpty(assetList)) return;
+
+                    var assetNames = assetList.Split(',');
+                    var serverAssetDir = Path.Combine(AppContext.BaseDirectory, "assets", $"{_serverIp}_{_serverPort}");
+                    Directory.CreateDirectory(serverAssetDir);
+
+                    foreach (var assetName in assetNames)
+                    {
+                        writer.WriteLine(assetName);
+                        var lengthStr = reader.ReadLine();
+                        if (int.TryParse(lengthStr, out int length) && length > 0)
+                        {
+                            var buffer = new byte[length];
+                            _stream.Read(buffer, 0, length);
+                            var assetPath = Path.Combine(serverAssetDir, assetName);
+                            File.WriteAllBytes(assetPath, buffer);
+                            Console.WriteLine($"Downloaded asset: {assetPath}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in asset transfer: {ex.Message}");
             }
         }
 
