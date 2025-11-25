@@ -6,10 +6,15 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Avalonia.Threading;
+using Silk.NET.OpenGL;
+using SilkWindow = Silk.NET.Windowing.Window;
+using AvaloniaWindow = Avalonia.Controls.Window;
 
 namespace Launcher
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : AvaloniaWindow
     {
         private ObservableCollection<Server> _servers = new();
         private const string ServersFilePath = "servers.json";
@@ -18,6 +23,34 @@ namespace Launcher
         {
             InitializeComponent();
             LoadServers();
+            CheckGlVersion();
+        }
+
+        private void CheckGlVersion()
+        {
+            var options = Silk.NET.Windowing.WindowOptions.Default;
+            options.IsVisible = false;
+            var glWindow = SilkWindow.Create(options);
+            glWindow.Load += () =>
+            {
+                var gl = GL.GetApi(glWindow);
+                var version = gl.GetStringS(StringName.Version);
+                glWindow.Close();
+
+                var match = Regex.Match(version, @"^(\d+)\.(\d+)");
+                if (match.Success && int.Parse(match.Groups[1].Value) >= 3 && int.Parse(match.Groups[2].Value) >= 3)
+                {
+                    return;
+                }
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    ErrorTextBlock.Text = $"Your system's OpenGL version ({version}) is not supported. Please update your graphics drivers to support at least OpenGL 3.3.";
+                    ErrorTextBlock.IsVisible = true;
+                    ConnectButton.IsEnabled = false;
+                });
+            };
+            glWindow.Run(() => { });
         }
 
         private void LoadServers()
@@ -60,6 +93,7 @@ namespace Launcher
             };
 
             _servers.Add(server);
+            SortServers();
             SaveServers();
         }
 

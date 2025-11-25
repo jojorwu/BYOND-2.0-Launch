@@ -133,6 +133,12 @@ namespace Client
 
         private async Task DownloadAssetAsync(string assetName, string serverAssetDir)
         {
+            if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || assetName.Contains(".."))
+            {
+                Console.WriteLine($"Rejected asset with invalid name: {assetName}");
+                return;
+            }
+
             try
             {
                 using var assetClient = new TcpClient(_serverIp, _serverPort);

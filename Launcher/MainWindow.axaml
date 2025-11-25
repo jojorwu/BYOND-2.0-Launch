@@ -52,5 +52,8 @@
                     HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
                     IsDefault="True"/>
         </Panel>
+
+        <TextBlock Name="ErrorTextBlock" DockPanel.Dock="Bottom" Foreground="Red" Margin="0,10,0,0"
+                   TextWrapping="Wrap" IsVisible="False"/>
     </DockPanel>
 </Window>
