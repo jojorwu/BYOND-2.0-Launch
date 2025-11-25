@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace Launcher
@@ -33,6 +34,7 @@ namespace Launcher
             }
 
             ServerList.ItemsSource = _servers;
+            SortServers();
         }
 
         private void SaveServers()
@@ -53,7 +55,8 @@ namespace Launcher
             {
                 Name = NameTextBox.Text ?? string.Empty,
                 IpAddress = IpAddressTextBox.Text ?? string.Empty,
-                Port = port
+                Port = port,
+                IsFavorite = FavoriteCheckBox.IsChecked ?? false
             };
 
             _servers.Add(server);
@@ -99,6 +102,27 @@ namespace Launcher
                 NameTextBox.Text = selectedServer.Name;
                 IpAddressTextBox.Text = selectedServer.IpAddress;
                 PortTextBox.Text = selectedServer.Port.ToString();
+                FavoriteCheckBox.IsChecked = selectedServer.IsFavorite;
+            }
+        }
+
+        private void FavoriteCheckBox_Changed(object sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (ServerList.SelectedItem is Server selectedServer)
+            {
+                selectedServer.IsFavorite = FavoriteCheckBox.IsChecked ?? false;
+                SortServers();
+                SaveServers();
+            }
+        }
+
+        private void SortServers()
+        {
+            var sortedServers = _servers.OrderByDescending(s => s.IsFavorite).ToList();
+            _servers.Clear();
+            foreach (var server in sortedServers)
+            {
+                _servers.Add(server);
             }
         }
     }
