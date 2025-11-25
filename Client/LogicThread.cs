@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace Client
 {
@@ -45,15 +47,19 @@ namespace Client
             _tcpClient?.Close();
         }
 
-        private void GameLoop()
+        private async void GameLoop()
         {
             try
             {
                 _tcpClient = new TcpClient(_serverIp, _serverPort);
                 _stream = _tcpClient.GetStream();
-                Console.WriteLine("Connected to server.");
+                using (var writer = new StreamWriter(_stream, leaveOpen: true) { AutoFlush = true })
+                {
+                    await writer.WriteLineAsync("PRIMARY");
+                }
+                Console.WriteLine("Connected to server with PRIMARY connection.");
 
-                HandleAssetTransfer();
+                await HandleAssetTransfer();
             }
             catch (Exception ex)
             {
@@ -102,37 +108,53 @@ namespace Client
             }
         }
 
-        private void HandleAssetTransfer()
+        private async Task HandleAssetTransfer()
         {
             try
             {
-                using (var reader = new StreamReader(_stream, leaveOpen: true))
-                using (var writer = new StreamWriter(_stream, leaveOpen: true) { AutoFlush = true })
-                {
-                    var assetList = reader.ReadLine();
-                    if (string.IsNullOrEmpty(assetList)) return;
+                using var reader = new StreamReader(_stream, leaveOpen: true);
+                var assetList = await reader.ReadLineAsync();
+                if (string.IsNullOrEmpty(assetList)) return;
 
-                    var assetNames = assetList.Split(',');
-                    var serverAssetDir = Path.Combine(AppContext.BaseDirectory, "assets", $"{_serverIp}_{_serverPort}");
-                    Directory.CreateDirectory(serverAssetDir);
+                var assetNames = assetList.Split(',');
+                var serverAssetDir = Path.Combine(AppContext.BaseDirectory, "assets", $"{_serverIp}_{_serverPort}");
+                Directory.CreateDirectory(serverAssetDir);
 
-                    foreach (var assetName in assetNames)
-                    {
-                        writer.WriteLine(assetName);
-                        var base64Content = reader.ReadLine();
-                        if (!string.IsNullOrEmpty(base64Content))
-                        {
-                            var fileBytes = Convert.FromBase64String(base64Content);
-                            var assetPath = Path.Combine(serverAssetDir, assetName);
-                            File.WriteAllBytes(assetPath, fileBytes);
-                            Console.WriteLine($"Downloaded asset: {assetPath}");
-                        }
-                    }
-                }
+                var downloadTasks = assetNames.Select(assetName => DownloadAssetAsync(assetName, serverAssetDir)).ToList();
+                await Task.WhenAll(downloadTasks);
+
+                Console.WriteLine("All assets downloaded.");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in asset transfer: {ex.Message}");
+            }
+        }
+
+        private async Task DownloadAssetAsync(string assetName, string serverAssetDir)
+        {
+            try
+            {
+                using var assetClient = new TcpClient(_serverIp, _serverPort);
+                using var assetStream = assetClient.GetStream();
+                using var assetWriter = new StreamWriter(assetStream, leaveOpen: true) { AutoFlush = true };
+                using var assetReader = new StreamReader(assetStream, leaveOpen: true);
+
+                await assetWriter.WriteLineAsync("ASSET");
+                await assetWriter.WriteLineAsync(assetName);
+
+                var base64Content = await assetReader.ReadLineAsync();
+                if (!string.IsNullOrEmpty(base64Content))
+                {
+                    var fileBytes = Convert.FromBase64String(base64Content);
+                    var assetPath = Path.Combine(serverAssetDir, assetName);
+                    await File.WriteAllBytesAsync(assetPath, fileBytes);
+                    Console.WriteLine($"Downloaded asset: {assetPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error downloading asset '{assetName}': {ex.Message}");
             }
         }
 

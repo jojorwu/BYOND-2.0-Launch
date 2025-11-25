@@ -67,18 +67,78 @@ namespace Server
 
         private void HandleNewClient(TcpClient client)
         {
-            lock (_clientsLock)
-            {
-                _clients.Add(client);
-            }
             Console.WriteLine($"Client connected: {client.Client.RemoteEndPoint}");
-            Task.Run(() => HandleClientCommunication(client));
+            Task.Run(() => ProcessClient(client));
+        }
+
+        private async Task ProcessClient(TcpClient client)
+        {
+            try
+            {
+                using var reader = new StreamReader(client.GetStream(), leaveOpen: true);
+                var connectionType = await reader.ReadLineAsync();
+
+                switch (connectionType)
+                {
+                    case "PRIMARY":
+                        Console.WriteLine($"Connection from {client.Client.RemoteEndPoint} established as PRIMARY.");
+                        lock (_clientsLock)
+                        {
+                            _clients.Add(client);
+                        }
+                        await HandleClientCommunication(client);
+                        break;
+
+                    case "ASSET":
+                        await HandleAssetRequestConnection(client, reader);
+                        client.Close();
+                        break;
+
+                    default:
+                        Console.WriteLine($"Unknown connection type '{connectionType}' from {client.Client.RemoteEndPoint}. Closing.");
+                        client.Close();
+                        break;
+                }
+            }
+            catch (IOException ex) when (ex.InnerException is SocketException)
+            {
+                Console.WriteLine($"Client disconnected abruptly: {client.Client.RemoteEndPoint}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing client {client.Client.RemoteEndPoint}: {ex.Message}");
+                if (client.Connected) client.Close();
+            }
         }
 
         private async Task HandleClientCommunication(TcpClient client)
         {
             await SendAssetList(client);
-            await ReceiveAssetRequests(client);
+
+            try
+            {
+                using (var reader = new StreamReader(client.GetStream(), leaveOpen: true))
+                {
+                    while (client.Connected)
+                    {
+                        var message = await reader.ReadLineAsync();
+                        if (message == null) break;
+                    }
+                }
+            }
+            catch (IOException ex) when (ex.InnerException is SocketException)
+            {
+                // Client disconnected
+            }
+            finally
+            {
+                Console.WriteLine($"Primary client disconnected: {client.Client.RemoteEndPoint}");
+                lock(_clientsLock)
+                {
+                    _clients.Remove(client);
+                }
+                client.Close();
+            }
         }
 
         private async Task SendAssetList(TcpClient client)
@@ -86,17 +146,10 @@ namespace Server
             try
             {
                 var assetsDir = Path.Combine(AppContext.BaseDirectory, "assets");
-                if (!Directory.Exists(assetsDir))
-                {
-                    Directory.CreateDirectory(assetsDir);
-                }
+                if (!Directory.Exists(assetsDir)) Directory.CreateDirectory(assetsDir);
 
                 var assetFiles = Directory.GetFiles(assetsDir);
-                var assetNames = new List<string>();
-                foreach (var file in assetFiles)
-                {
-                    assetNames.Add(Path.GetFileName(file));
-                }
+                var assetNames = assetFiles.Select(Path.GetFileName).ToList();
 
                 var message = string.Join(",", assetNames);
                 using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
@@ -112,37 +165,33 @@ namespace Server
             }
         }
 
-        private async Task ReceiveAssetRequests(TcpClient client)
+        private async Task HandleAssetRequestConnection(TcpClient client, StreamReader reader)
         {
             try
             {
-                using (var reader = new StreamReader(client.GetStream(), leaveOpen: true))
                 using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
                 {
-                    while (client.Connected)
-                    {
-                        var assetName = await reader.ReadLineAsync();
-                        if (assetName == null) break;
+                    var assetName = await reader.ReadLineAsync();
+                    if (string.IsNullOrEmpty(assetName)) return;
 
-                        var assetPath = Path.Combine(AppContext.BaseDirectory, "assets", assetName);
-                        if (File.Exists(assetPath))
-                        {
-                            var fileBytes = await File.ReadAllBytesAsync(assetPath);
-                            var base64Content = Convert.ToBase64String(fileBytes);
-                            await writer.WriteLineAsync(base64Content);
-                            Console.WriteLine($"Sent asset '{assetName}' to client.");
-                        }
-                        else
-                        {
-                            await writer.WriteLineAsync("");
-                            Console.WriteLine($"Asset '{assetName}' not found.");
-                        }
+                    var assetPath = Path.Combine(AppContext.BaseDirectory, "assets", assetName);
+                    if (File.Exists(assetPath))
+                    {
+                        var fileBytes = await File.ReadAllBytesAsync(assetPath);
+                        var base64Content = Convert.ToBase64String(fileBytes);
+                        await writer.WriteLineAsync(base64Content);
+                        Console.WriteLine($"Sent asset '{assetName}' to client via ASSET connection.");
+                    }
+                    else
+                    {
+                        await writer.WriteLineAsync("");
+                        Console.WriteLine($"Asset '{assetName}' not found for ASSET connection.");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error receiving asset requests: {ex.Message}");
+                Console.WriteLine($"Error handling asset request: {ex.Message}");
             }
         }
 
