@@ -6,48 +6,10 @@ namespace Launcher
     public class Server : INotifyPropertyChanged
     {
         private string _name = string.Empty;
-        public string Name
-        {
-            get => _name;
-            set
-            {
-                _name = value;
-                OnPropertyChanged(nameof(Name));
-            }
-        }
-
-        private string _ipAddress = string.Empty;
-        public string IpAddress
-        {
-            get => _ipAddress;
-            set
-            {
-                _ipAddress = value;
-                OnPropertyChanged(nameof(IpAddress));
-            }
-        }
-
-        private int _port;
-        public int Port
-        {
-            get => _port;
-            set
-            {
-                _port = value;
-                OnPropertyChanged(nameof(Port));
-            }
-        }
-
-        private bool _isFavorite;
-        public bool IsFavorite
-        {
-            get => _isFavorite;
-            set
-            {
-                _isFavorite = value;
-                OnPropertyChanged(nameof(IsFavorite));
-            }
-        }
+        public string Name { get; init; } = string.Empty;
+        public string IpAddress { get; init; } = string.Empty;
+        public int Port { get; init; }
+        public bool IsFavorite { get; init; }
 
         private string _status = "Unknown";
         [JsonIgnore]
