@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace Launcher
@@ -33,30 +34,69 @@ namespace Launcher
             }
 
             ServerList.ItemsSource = _servers;
+            SortServers();
         }
 
         private void SaveServers()
         {
+            SortServers();
             var json = JsonSerializer.Serialize(_servers);
             File.WriteAllText(ServersFilePath, json);
         }
 
+        private void SortServers()
+        {
+            var sortedServers = _servers.OrderByDescending(s => s.IsFavorite).ToList();
+            _servers.Clear();
+            foreach (var server in sortedServers)
+            {
+                _servers.Add(server);
+            }
+        }
+
         private void AddButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
-            if (!int.TryParse(PortTextBox.Text, out var port))
+            if (string.IsNullOrWhiteSpace(NameTextBox.Text))
             {
-                Console.WriteLine("Invalid port number entered.");
+                StatusTextBlock.Text = "Server name cannot be empty.";
                 return;
             }
 
-            var server = new Server
+            if (string.IsNullOrWhiteSpace(IpAddressTextBox.Text))
             {
-                Name = NameTextBox.Text ?? string.Empty,
-                IpAddress = IpAddressTextBox.Text ?? string.Empty,
-                Port = port
-            };
+                StatusTextBlock.Text = "IP address cannot be empty.";
+                return;
+            }
 
-            _servers.Add(server);
+            if (!int.TryParse(PortTextBox.Text, out var port))
+            {
+                StatusTextBlock.Text = "Invalid port number.";
+                return;
+            }
+
+            if (ServerList.SelectedItem is Server selectedServer)
+            {
+                selectedServer.Name = NameTextBox.Text;
+                selectedServer.IpAddress = IpAddressTextBox.Text;
+                selectedServer.Port = port;
+                selectedServer.IsFavorite = FavoriteCheckBox.IsChecked ?? false;
+                _servers.Remove(selectedServer);
+                _servers.Add(selectedServer);
+                StatusTextBlock.Text = "Server updated successfully.";
+            }
+            else
+            {
+                var server = new Server
+                {
+                    Name = NameTextBox.Text,
+                    IpAddress = IpAddressTextBox.Text,
+                    Port = port,
+                    IsFavorite = FavoriteCheckBox.IsChecked ?? false
+                };
+                _servers.Add(server);
+                StatusTextBlock.Text = "Server added successfully.";
+            }
+
             SaveServers();
         }
 
@@ -66,6 +106,11 @@ namespace Launcher
             {
                 _servers.Remove(selectedServer);
                 SaveServers();
+                StatusTextBlock.Text = "Server deleted successfully.";
+            }
+            else
+            {
+                StatusTextBlock.Text = "Please select a server to delete.";
             }
         }
 
@@ -87,8 +132,12 @@ namespace Launcher
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error launching client: {ex.Message}");
+                    StatusTextBlock.Text = $"Error launching client: {ex.Message}";
                 }
+            }
+            else
+            {
+                StatusTextBlock.Text = "Please select a server to connect to.";
             }
         }
 
@@ -99,6 +148,21 @@ namespace Launcher
                 NameTextBox.Text = selectedServer.Name;
                 IpAddressTextBox.Text = selectedServer.IpAddress;
                 PortTextBox.Text = selectedServer.Port.ToString();
+                FavoriteCheckBox.IsChecked = selectedServer.IsFavorite;
+                AddButton.Content = "Update";
+            }
+            else
+            {
+                AddButton.Content = "Add";
+            }
+        }
+
+        private void FavoriteCheckBox_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (ServerList.SelectedItem is Server selectedServer)
+            {
+                selectedServer.IsFavorite = FavoriteCheckBox.IsChecked ?? false;
+                SaveServers();
             }
         }
     }

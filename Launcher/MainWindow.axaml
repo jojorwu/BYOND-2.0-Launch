@@ -14,7 +14,10 @@
                 <ListBox Name="ServerList" SelectionChanged="ServerList_SelectionChanged">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type local:Server}">
-                            <TextBlock Text="{Binding Name}" />
+                            <StackPanel Orientation="Horizontal">
+                                <CheckBox IsChecked="{Binding IsFavorite}" IsEnabled="False" />
+                                <TextBlock Text="{Binding Name}" Margin="5,0,0,0" />
+                            </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
@@ -25,7 +28,7 @@
             <StackPanel VerticalAlignment="Top">
                 <TextBlock FontSize="18" FontWeight="Bold" Margin="0,0,0,10">Server Details</TextBlock>
 
-                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,10">
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,0,0,10">
                     <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">Name:</TextBlock>
                     <TextBox Grid.Row="0" Grid.Column="1" Name="NameTextBox" />
 
@@ -34,6 +37,9 @@
 
                     <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">Port:</TextBlock>
                     <TextBox Grid.Row="2" Grid.Column="1" Margin="0,5,0,0" Name="PortTextBox" />
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">Favorite:</TextBlock>
+                    <CheckBox Grid.Row="3" Grid.Column="1" Margin="0,5,0,0" Name="FavoriteCheckBox" Click="FavoriteCheckBox_Click" />
                 </Grid>
 
                 <StackPanel Orientation="Horizontal" Spacing="5">
@@ -45,6 +51,8 @@
             <Button Name="ConnectButton" Click="ConnectButton_Click" Content="Connect"
                     HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
                     IsDefault="True"/>
+
+            <TextBlock Name="StatusTextBlock" VerticalAlignment="Bottom" Margin="0,0,0,30"/>
         </Panel>
     </DockPanel>
 </Window>
