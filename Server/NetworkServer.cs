@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Core;
 
 namespace Server
 {
@@ -167,7 +168,7 @@ namespace Server
                 return;
             }
 
-            if (!IsValidAssetName(assetName))
+            if (!ValidationUtils.IsValidAssetName(assetName))
             {
                 Console.WriteLine($"Rejected invalid asset name for upload: '{assetName}'");
                 await writer.WriteLineAsync("ERROR Invalid asset name");
@@ -204,7 +205,7 @@ namespace Server
             if (args.Length == 0) return;
             var assetName = args[0];
 
-            if (!IsValidAssetName(assetName))
+            if (!ValidationUtils.IsValidAssetName(assetName))
             {
                 Console.WriteLine($"Rejected invalid asset request: '{assetName}'");
                 await writer.WriteLineAsync("0");
@@ -273,26 +274,6 @@ namespace Server
         {
             Stop();
             _cancellationTokenSource.Dispose();
-        }
-
-        private bool IsValidAssetName(string assetName)
-        {
-            if (string.IsNullOrWhiteSpace(assetName))
-            {
-                return false;
-            }
-
-            if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-            {
-                return false;
-            }
-
-            if (assetName.Contains(".."))
-            {
-                return false;
-            }
-
-            return true;
         }
     }
 }

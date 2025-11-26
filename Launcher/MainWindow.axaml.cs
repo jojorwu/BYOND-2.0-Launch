@@ -19,14 +19,20 @@ namespace Launcher
         public MainWindow()
         {
             InitializeComponent();
-            LoadServers();
+            this.Loaded += MainWindow_Loaded;
         }
 
-        private void LoadServers()
+        private async void MainWindow_Loaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            await LoadServersAsync();
+            RefreshButton_Click(this, new Avalonia.Interactivity.RoutedEventArgs());
+        }
+
+        private async Task LoadServersAsync()
         {
             if (File.Exists(ServersFilePath))
             {
-                var json = File.ReadAllText(ServersFilePath);
+                var json = await File.ReadAllTextAsync(ServersFilePath);
                 var serversList = JsonSerializer.Deserialize<List<Server>>(json) ?? new List<Server>();
                 _servers = new ObservableCollection<Server>(serversList);
             }

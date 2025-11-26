@@ -4,6 +4,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Core;
 
 namespace Client
 {
@@ -163,7 +164,7 @@ namespace Client
 
                     foreach (var assetName in assetNames)
                     {
-                        if (!IsValidAssetName(assetName))
+                        if (!ValidationUtils.IsValidAssetName(assetName))
                         {
                             Console.WriteLine($"Server sent invalid asset name: '{assetName}'. Skipping.");
                             continue;
@@ -214,26 +215,6 @@ namespace Client
             {
                 return (PreviousState, CurrentState);
             }
-        }
-
-        private bool IsValidAssetName(string assetName)
-        {
-            if (string.IsNullOrWhiteSpace(assetName))
-            {
-                return false;
-            }
-
-            if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-            {
-                return false;
-            }
-
-            if (assetName.Contains(".."))
-            {
-                return false;
-            }
-
-            return true;
         }
     }
 }
