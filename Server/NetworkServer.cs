@@ -124,7 +124,23 @@ namespace Server
                         var assetName = await reader.ReadLineAsync();
                         if (assetName == null) break;
 
-                        var assetPath = Path.Combine(AppContext.BaseDirectory, "assets", assetName);
+                        if (!IsValidAssetName(assetName))
+                        {
+                            Console.WriteLine($"Rejected invalid asset request: '{assetName}'");
+                            await writer.WriteLineAsync("0");
+                            continue;
+                        }
+
+                        var assetsDir = Path.Combine(AppContext.BaseDirectory, "assets");
+                        var assetPath = Path.Combine(assetsDir, assetName);
+
+                        if (!Path.GetFullPath(assetPath).StartsWith(Path.GetFullPath(assetsDir)))
+                        {
+                            Console.WriteLine($"Rejected path traversal attempt: '{assetName}'");
+                            await writer.WriteLineAsync("0");
+                            continue;
+                        }
+
                         if (File.Exists(assetPath))
                         {
                             var fileBytes = await File.ReadAllBytesAsync(assetPath);
@@ -179,6 +195,26 @@ namespace Server
         {
             Stop();
             _cancellationTokenSource.Dispose();
+        }
+
+        private bool IsValidAssetName(string assetName)
+        {
+            if (string.IsNullOrWhiteSpace(assetName))
+            {
+                return false;
+            }
+
+            if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                return false;
+            }
+
+            if (assetName.Contains(".."))
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }
