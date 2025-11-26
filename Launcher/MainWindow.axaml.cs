@@ -5,7 +5,9 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Launcher
 {
@@ -114,26 +116,39 @@ namespace Launcher
             }
         }
 
-        private void ConnectButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
+        private async void ConnectButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             if (ServerList.SelectedItem is Server selectedServer)
             {
-                try
-                {
-                    var launcherDir = AppContext.BaseDirectory;
-                    var clientPath = Path.Combine(launcherDir, "Client", "Client");
+                ConnectButton.IsEnabled = false;
+                StatusTextBlock.Text = "Pinging...";
 
-                    if (OperatingSystem.IsWindows())
+                if (await PingServer(selectedServer.IpAddress, selectedServer.Port))
+                {
+                    StatusTextBlock.Text = "Connecting...";
+                    try
                     {
-                        clientPath += ".exe";
-                    }
+                        var launcherDir = AppContext.BaseDirectory;
+                        var clientPath = Path.Combine(launcherDir, "Client", "Client");
 
-                    Process.Start(clientPath, $"{selectedServer.IpAddress} {selectedServer.Port}");
+                        if (OperatingSystem.IsWindows())
+                        {
+                            clientPath += ".exe";
+                        }
+
+                        Process.Start(clientPath, $"{selectedServer.IpAddress} {selectedServer.Port}");
+                    }
+                    catch (Exception ex)
+                    {
+                        StatusTextBlock.Text = $"Error launching client: {ex.Message}";
+                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    StatusTextBlock.Text = $"Error launching client: {ex.Message}";
+                    StatusTextBlock.Text = "Server is offline.";
                 }
+
+                ConnectButton.IsEnabled = true;
             }
             else
             {
@@ -164,6 +179,25 @@ namespace Launcher
                 selectedServer.IsFavorite = FavoriteCheckBox.IsChecked ?? false;
                 SaveServers();
             }
+        }
+
+        private async Task<bool> PingServer(string ipAddress, int port)
+        {
+            try
+            {
+                using var client = new TcpClient();
+                var task = client.ConnectAsync(ipAddress, port);
+                if (await Task.WhenAny(task, Task.Delay(2000)) == task)
+                {
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                // Ignore exceptions
+            }
+
+            return false;
         }
     }
 }
