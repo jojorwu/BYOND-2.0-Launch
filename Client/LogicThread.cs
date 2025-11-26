@@ -19,8 +19,8 @@ namespace Client
         private int _nextId = 0;
         private readonly string _serverIp;
         private readonly int _serverPort;
-        private TcpClient _tcpClient;
-        private NetworkStream _stream;
+        private TcpClient? _tcpClient;
+        private NetworkStream? _stream;
 
         public LogicThread(string serverIp, int serverPort)
         {
@@ -104,6 +104,11 @@ namespace Client
 
         private void HandleAssetTransfer()
         {
+            if (_stream == null)
+            {
+                return;
+            }
+
             try
             {
                 using (var reader = new StreamReader(_stream, leaveOpen: true))
@@ -118,6 +123,12 @@ namespace Client
 
                     foreach (var assetName in assetNames)
                     {
+                        if (!IsValidAssetName(assetName))
+                        {
+                            Console.WriteLine($"Server sent invalid asset name: '{assetName}'. Skipping.");
+                            continue;
+                        }
+
                         writer.WriteLine(assetName);
                         var lengthStr = reader.ReadLine();
                         if (int.TryParse(lengthStr, out int length) && length > 0)
@@ -163,6 +174,26 @@ namespace Client
             {
                 return (PreviousState, CurrentState);
             }
+        }
+
+        private bool IsValidAssetName(string assetName)
+        {
+            if (string.IsNullOrWhiteSpace(assetName))
+            {
+                return false;
+            }
+
+            if (assetName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                return false;
+            }
+
+            if (assetName.Contains(".."))
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }
