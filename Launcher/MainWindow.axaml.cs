@@ -49,10 +49,14 @@ namespace Launcher
         private void SortServers()
         {
             var sortedServers = _servers.OrderByDescending(s => s.IsFavorite).ToList();
-            _servers.Clear();
-            foreach (var server in sortedServers)
+            for (int i = 0; i < sortedServers.Count; i++)
             {
-                _servers.Add(server);
+                var server = sortedServers[i];
+                var oldIndex = _servers.IndexOf(server);
+                if (oldIndex != i)
+                {
+                    _servers.Move(oldIndex, i);
+                }
             }
         }
 
