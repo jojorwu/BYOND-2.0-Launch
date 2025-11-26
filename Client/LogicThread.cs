@@ -3,9 +3,17 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Client
 {
+    public enum ConnectionState
+    {
+        Disconnected,
+        Connecting,
+        Connected
+    }
+
     public class LogicThread
     {
         public GameState PreviousState { get; private set; }
@@ -21,6 +29,9 @@ namespace Client
         private readonly int _serverPort;
         private TcpClient? _tcpClient;
         private NetworkStream? _stream;
+        private ConnectionState _connectionState = ConnectionState.Disconnected;
+
+        public bool IsConnected => _connectionState == ConnectionState.Connected;
 
         public LogicThread(string serverIp, int serverPort)
         {
@@ -45,21 +56,31 @@ namespace Client
             _tcpClient?.Close();
         }
 
-        private void GameLoop()
+        private async Task ConnectWithRetriesAsync()
         {
-            try
+            _connectionState = ConnectionState.Connecting;
+            while (_isRunning && !IsConnected)
             {
-                _tcpClient = new TcpClient(_serverIp, _serverPort);
-                _stream = _tcpClient.GetStream();
-                Console.WriteLine("Connected to server.");
+                try
+                {
+                    _tcpClient = new TcpClient();
+                    await _tcpClient.ConnectAsync(_serverIp, _serverPort);
+                    _stream = _tcpClient.GetStream();
+                    _connectionState = ConnectionState.Connected;
+                    Console.WriteLine("Connected to server.");
+                    HandleAssetTransfer();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to connect to server: {ex.Message}. Retrying in 5 seconds...");
+                    await Task.Delay(5000);
+                }
+            }
+        }
 
-                HandleAssetTransfer();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to connect to server: {ex.Message}");
-                return;
-            }
+        private async void GameLoop()
+        {
+            await ConnectWithRetriesAsync();
 
             var stopwatch = new Stopwatch();
             double accumulator = 0;
@@ -89,6 +110,11 @@ namespace Client
 
             while (_isRunning)
             {
+                if (!IsConnected)
+                {
+                    await ConnectWithRetriesAsync();
+                }
+
                 double currentTime = stopwatch.Elapsed.TotalSeconds;
                 double frameTime = currentTime - lastTime;
                 lastTime = currentTime;
@@ -96,7 +122,15 @@ namespace Client
 
                 while (accumulator >= TimeStep)
                 {
-                    Update(TimeStep);
+                    try
+                    {
+                        Update(TimeStep);
+                    }
+                    catch (IOException)
+                    {
+                        Console.WriteLine("Connection lost. Reconnecting...");
+                        _connectionState = ConnectionState.Disconnected;
+                    }
                     accumulator -= TimeStep;
                 }
             }

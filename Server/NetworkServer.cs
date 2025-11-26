@@ -77,8 +77,25 @@ namespace Server
 
         private async Task HandleClientCommunication(TcpClient client)
         {
-            await SendAssetList(client);
-            await ReceiveAssetRequests(client);
+            try
+            {
+                await SendAssetList(client);
+                await ReceiveAssetRequests(client);
+            }
+            finally
+            {
+                RemoveClient(client);
+            }
+        }
+
+        private void RemoveClient(TcpClient client)
+        {
+            lock (_clientsLock)
+            {
+                _clients.Remove(client);
+            }
+            client.Close();
+            Console.WriteLine($"Client disconnected: {client.Client.RemoteEndPoint}");
         }
 
         private async Task SendAssetList(TcpClient client)
