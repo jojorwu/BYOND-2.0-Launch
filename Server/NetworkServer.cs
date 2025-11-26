@@ -160,10 +160,7 @@ namespace Server
 
                         if (File.Exists(assetPath))
                         {
-                            var fileBytes = await File.ReadAllBytesAsync(assetPath);
-                            await writer.WriteLineAsync(fileBytes.Length.ToString());
-                            await client.GetStream().WriteAsync(fileBytes, 0, fileBytes.Length);
-                            Console.WriteLine($"Sent asset '{assetName}' to client.");
+                            await SendAssetAsync(client, writer, assetName, assetPath);
                         }
                         else
                         {
@@ -177,6 +174,14 @@ namespace Server
             {
                 Console.WriteLine($"Error receiving asset requests: {ex.Message}");
             }
+        }
+
+        private async Task SendAssetAsync(TcpClient client, StreamWriter writer, string assetName, string assetPath)
+        {
+            var fileBytes = await File.ReadAllBytesAsync(assetPath);
+            await writer.WriteLineAsync(fileBytes.Length.ToString());
+            await client.GetStream().WriteAsync(fileBytes, 0, fileBytes.Length);
+            Console.WriteLine($"Sent asset '{assetName}' to client.");
         }
 
         /// <summary>

@@ -115,24 +115,29 @@ namespace Client
                     await ConnectWithRetriesAsync();
                 }
 
-                double currentTime = stopwatch.Elapsed.TotalSeconds;
-                double frameTime = currentTime - lastTime;
-                lastTime = currentTime;
-                accumulator += frameTime;
+                RunGameSimulation(stopwatch, ref lastTime, ref accumulator);
+            }
+        }
 
-                while (accumulator >= TimeStep)
+        private void RunGameSimulation(Stopwatch stopwatch, ref double lastTime, ref double accumulator)
+        {
+            double currentTime = stopwatch.Elapsed.TotalSeconds;
+            double frameTime = currentTime - lastTime;
+            lastTime = currentTime;
+            accumulator += frameTime;
+
+            while (accumulator >= TimeStep)
+            {
+                try
                 {
-                    try
-                    {
-                        Update(TimeStep);
-                    }
-                    catch (IOException)
-                    {
-                        Console.WriteLine("Connection lost. Reconnecting...");
-                        _connectionState = ConnectionState.Disconnected;
-                    }
-                    accumulator -= TimeStep;
+                    Update(TimeStep);
                 }
+                catch (IOException)
+                {
+                    Console.WriteLine("Connection lost. Reconnecting...");
+                    _connectionState = ConnectionState.Disconnected;
+                }
+                accumulator -= TimeStep;
             }
         }
 
