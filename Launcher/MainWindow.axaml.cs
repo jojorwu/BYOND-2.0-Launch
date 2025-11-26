@@ -66,7 +66,7 @@ namespace Launcher
             }
         }
 
-        private void AddButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
+        private void SaveButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(NameTextBox.Text))
             {
@@ -124,18 +124,20 @@ namespace Launcher
 
         private async void RefreshButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
+            RefreshButton.IsEnabled = false;
             StatusTextBlock.Text = "Refreshing server statuses...";
-            var tasks = new List<Task>();
-            foreach (var server in _servers)
+
+            var tasks = _servers.Select(server => Task.Run(async () =>
             {
-                tasks.Add(Task.Run(async () =>
-                {
-                    server.Status = "Pinging...";
-                    server.Status = await PingServer(server.IpAddress, server.Port) ? "Online" : "Offline";
-                }));
-            }
+                server.Status = "Pinging...";
+                var isOnline = await PingServer(server.IpAddress, server.Port);
+                server.Status = isOnline ? "Online" : "Offline";
+            })).ToList();
+
             await Task.WhenAll(tasks);
+
             StatusTextBlock.Text = "Refresh complete.";
+            RefreshButton.IsEnabled = true;
         }
 
         private void NewServerButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -215,11 +217,11 @@ namespace Launcher
                 IpAddressTextBox.Text = selectedServer.IpAddress;
                 PortTextBox.Text = selectedServer.Port.ToString();
                 FavoriteCheckBox.IsChecked = selectedServer.IsFavorite;
-                AddButton.Content = "Update";
+                SaveButton.Content = "Update";
             }
             else
             {
-                AddButton.Content = "Add";
+                SaveButton.Content = "Save";
                 ClearInputFields();
             }
         }
