@@ -82,28 +82,47 @@ namespace Launcher
 
             if (ServerList.SelectedItem is Server selectedServer)
             {
-                selectedServer.Name = NameTextBox.Text;
-                selectedServer.IpAddress = IpAddressTextBox.Text;
-                selectedServer.Port = port;
-                selectedServer.IsFavorite = FavoriteCheckBox.IsChecked ?? false;
-                _servers.Remove(selectedServer);
-                _servers.Add(selectedServer);
-                StatusTextBlock.Text = "Server updated successfully.";
+                UpdateSelectedServer(selectedServer, port);
             }
             else
             {
-                var server = new Server
-                {
-                    Name = NameTextBox.Text,
-                    IpAddress = IpAddressTextBox.Text,
-                    Port = port,
-                    IsFavorite = FavoriteCheckBox.IsChecked ?? false
-                };
-                _servers.Add(server);
-                StatusTextBlock.Text = "Server added successfully.";
+                AddNewServer(port);
             }
 
             SaveServers();
+        }
+
+        private void AddNewServer(int port)
+        {
+            var server = new Server
+            {
+                Name = NameTextBox.Text,
+                IpAddress = IpAddressTextBox.Text,
+                Port = port,
+                IsFavorite = FavoriteCheckBox.IsChecked ?? false
+            };
+            _servers.Add(server);
+            StatusTextBlock.Text = "Server added successfully.";
+            ClearInputFields();
+        }
+
+        private void UpdateSelectedServer(Server server, int port)
+        {
+            server.Name = NameTextBox.Text;
+            server.IpAddress = IpAddressTextBox.Text;
+            server.Port = port;
+            server.IsFavorite = FavoriteCheckBox.IsChecked ?? false;
+            _servers.Remove(server);
+            _servers.Add(server);
+            StatusTextBlock.Text = "Server updated successfully.";
+        }
+
+        private void ClearInputFields()
+        {
+            NameTextBox.Text = string.Empty;
+            IpAddressTextBox.Text = string.Empty;
+            PortTextBox.Text = string.Empty;
+            FavoriteCheckBox.IsChecked = false;
         }
 
         private void DeleteButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -113,6 +132,8 @@ namespace Launcher
                 _servers.Remove(selectedServer);
                 SaveServers();
                 StatusTextBlock.Text = "Server deleted successfully.";
+                ServerList.SelectedItem = null;
+                ClearInputFields();
             }
             else
             {
@@ -173,6 +194,7 @@ namespace Launcher
             else
             {
                 AddButton.Content = "Add";
+                ClearInputFields();
             }
         }
 
