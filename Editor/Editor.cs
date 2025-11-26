@@ -21,15 +21,15 @@ namespace Editor
         private AssetManager? _assetManager;
 
         private MainMenuPanel _mainMenuPanel;
-        private MenuBarPanel _menuBarPanel;
-        private ViewportPanel _viewportPanel;
-        private AssetBrowserPanel _assetBrowserPanel;
-        private InspectorPanel _inspectorPanel;
-        private ObjectBrowserPanel _objectBrowserPanel;
-        private ScriptEditorPanel _scriptEditorPanel;
-        private SettingsPanel _settingsPanel;
-        private ToolboxPanel _toolboxPanel;
-        private MapControlsPanel _mapControlsPanel;
+        private MenuBarPanel? _menuBarPanel;
+        private ViewportPanel? _viewportPanel;
+        private AssetBrowserPanel? _assetBrowserPanel;
+        private InspectorPanel? _inspectorPanel;
+        private ObjectBrowserPanel? _objectBrowserPanel;
+        private ScriptEditorPanel? _scriptEditorPanel;
+        private SettingsPanel? _settingsPanel;
+        private ToolboxPanel? _toolboxPanel;
+        private MapControlsPanel? _mapControlsPanel;
 
         private AppState _appState = AppState.MainMenu;
 
@@ -129,18 +129,18 @@ namespace Editor
                     }
                     break;
                 case AppState.Editing:
-                    _menuBarPanel.Draw();
+                    _menuBarPanel!.Draw();
 
-                    _viewportPanel.Draw();
-                    _assetBrowserPanel.Draw();
-                    _inspectorPanel.Draw();
-                    _objectBrowserPanel.Draw();
-                    _scriptEditorPanel.Draw();
-                    _toolboxPanel.Draw();
-                    _mapControlsPanel.Draw();
+                    _viewportPanel!.Draw();
+                    _assetBrowserPanel!.Draw();
+                    _inspectorPanel!.Draw();
+                    _objectBrowserPanel!.Draw();
+                    _scriptEditorPanel!.Draw();
+                    _toolboxPanel!.Draw();
+                    _mapControlsPanel!.Draw();
                     break;
                 case AppState.Settings:
-                    _settingsPanel.Draw();
+                    _settingsPanel!.Draw();
                     break;
             }
 

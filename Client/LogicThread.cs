@@ -21,7 +21,7 @@ namespace Client
         public GameState CurrentState { get; private set; }
 
         private readonly object _lock = new object();
-        private Thread _thread;
+        private Task? _gameLoopTask;
         private bool _isRunning;
         public const int TicksPerSecond = 30;
         public const float TimeStep = 1.0f / TicksPerSecond;
@@ -40,19 +40,18 @@ namespace Client
             _serverPort = serverPort;
             PreviousState = new GameState();
             CurrentState = new GameState();
-            _thread = new Thread(GameLoop);
         }
 
         public void Start()
         {
             _isRunning = true;
-            _thread.Start();
+            _gameLoopTask = Task.Run(GameLoop);
         }
 
         public void Stop()
         {
             _isRunning = false;
-            _thread.Join();
+            _gameLoopTask?.Wait();
             _stream?.Close();
             _tcpClient?.Close();
         }
@@ -79,7 +78,7 @@ namespace Client
             }
         }
 
-        private async void GameLoop()
+        private async Task GameLoop()
         {
             await ConnectWithRetriesAsync();
 
