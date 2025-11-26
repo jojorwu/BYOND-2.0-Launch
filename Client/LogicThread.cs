@@ -153,6 +153,7 @@ namespace Client
                 using (var reader = new StreamReader(_stream, leaveOpen: true))
                 using (var writer = new StreamWriter(_stream, leaveOpen: true) { AutoFlush = true })
                 {
+                    writer.WriteLine("LIST_ASSETS");
                     var assetList = reader.ReadLine();
                     if (string.IsNullOrEmpty(assetList)) return;
 
@@ -168,7 +169,7 @@ namespace Client
                             continue;
                         }
 
-                        writer.WriteLine(assetName);
+                        writer.WriteLine($"DOWNLOAD {assetName}");
                         var lengthStr = reader.ReadLine();
                         if (int.TryParse(lengthStr, out int length) && length > 0)
                         {

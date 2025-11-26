@@ -79,8 +79,39 @@ namespace Server
         {
             try
             {
-                await SendAssetList(client);
-                await ReceiveAssetRequests(client);
+                using (var reader = new StreamReader(client.GetStream(), leaveOpen: true))
+                using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
+                {
+                    while (client.Connected)
+                    {
+                        var commandLine = await reader.ReadLineAsync();
+                        if (commandLine == null) break;
+
+                        var parts = commandLine.Split(' ');
+                        var command = parts[0].ToUpper();
+                        var args = parts.Length > 1 ? parts[1..] : Array.Empty<string>();
+
+                        switch (command)
+                        {
+                            case "LIST_ASSETS":
+                                await HandleListAssets(writer);
+                                break;
+                            case "DOWNLOAD":
+                                await HandleDownloadAsset(client, writer, args);
+                                break;
+                            case "UPLOAD":
+                                await HandleUploadAsset(reader, writer, args);
+                                break;
+                            default:
+                                Console.WriteLine($"Unknown command: {command}");
+                                break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling client communication: {ex.Message}");
             }
             finally
             {
@@ -98,7 +129,7 @@ namespace Server
             Console.WriteLine($"Client disconnected: {client.Client.RemoteEndPoint}");
         }
 
-        private async Task SendAssetList(TcpClient client)
+        private async Task HandleListAssets(StreamWriter writer)
         {
             try
             {
@@ -116,11 +147,7 @@ namespace Server
                 }
 
                 var message = string.Join(",", assetNames);
-                using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
-                {
-                    await writer.WriteLineAsync(message);
-                }
-
+                await writer.WriteLineAsync(message);
                 Console.WriteLine($"Sent asset list to client: {message}");
             }
             catch (Exception ex)
@@ -129,50 +156,79 @@ namespace Server
             }
         }
 
-        private async Task ReceiveAssetRequests(TcpClient client)
+        private async Task HandleUploadAsset(StreamReader reader, StreamWriter writer, string[] args)
         {
+            if (args.Length < 2) return;
+
+            var assetName = args[0];
+            if (!int.TryParse(args[1], out var length) || length <= 0)
+            {
+                await writer.WriteLineAsync("ERROR Invalid length");
+                return;
+            }
+
+            if (!IsValidAssetName(assetName))
+            {
+                Console.WriteLine($"Rejected invalid asset name for upload: '{assetName}'");
+                await writer.WriteLineAsync("ERROR Invalid asset name");
+                return;
+            }
+
+            var assetsDir = Path.Combine(AppContext.BaseDirectory, "assets");
+            var assetPath = Path.Combine(assetsDir, assetName);
+
+            if (!Path.GetFullPath(assetPath).StartsWith(Path.GetFullPath(assetsDir)))
+            {
+                Console.WriteLine($"Rejected path traversal attempt for upload: '{assetName}'");
+                await writer.WriteLineAsync("ERROR Invalid asset path");
+                return;
+            }
+
             try
             {
-                using (var reader = new StreamReader(client.GetStream(), leaveOpen: true))
-                using (var writer = new StreamWriter(client.GetStream(), leaveOpen: true) { AutoFlush = true })
-                {
-                    while (client.Connected)
-                    {
-                        var assetName = await reader.ReadLineAsync();
-                        if (assetName == null) break;
-
-                        if (!IsValidAssetName(assetName))
-                        {
-                            Console.WriteLine($"Rejected invalid asset request: '{assetName}'");
-                            await writer.WriteLineAsync("0");
-                            continue;
-                        }
-
-                        var assetsDir = Path.Combine(AppContext.BaseDirectory, "assets");
-                        var assetPath = Path.Combine(assetsDir, assetName);
-
-                        if (!Path.GetFullPath(assetPath).StartsWith(Path.GetFullPath(assetsDir)))
-                        {
-                            Console.WriteLine($"Rejected path traversal attempt: '{assetName}'");
-                            await writer.WriteLineAsync("0");
-                            continue;
-                        }
-
-                        if (File.Exists(assetPath))
-                        {
-                            await SendAssetAsync(client, writer, assetName, assetPath);
-                        }
-                        else
-                        {
-                            await writer.WriteLineAsync("0");
-                            Console.WriteLine($"Asset '{assetName}' not found.");
-                        }
-                    }
-                }
+                var buffer = new char[length];
+                await reader.ReadBlockAsync(buffer, 0, length);
+                await File.WriteAllTextAsync(assetPath, new string(buffer));
+                await writer.WriteLineAsync("OK");
+                Console.WriteLine($"Uploaded asset: {assetName}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error receiving asset requests: {ex.Message}");
+                Console.WriteLine($"Error uploading asset '{assetName}': {ex.Message}");
+                await writer.WriteLineAsync("ERROR Upload failed");
+            }
+        }
+
+        private async Task HandleDownloadAsset(TcpClient client, StreamWriter writer, string[] args)
+        {
+            if (args.Length == 0) return;
+            var assetName = args[0];
+
+            if (!IsValidAssetName(assetName))
+            {
+                Console.WriteLine($"Rejected invalid asset request: '{assetName}'");
+                await writer.WriteLineAsync("0");
+                return;
+            }
+
+            var assetsDir = Path.Combine(AppContext.BaseDirectory, "assets");
+            var assetPath = Path.Combine(assetsDir, assetName);
+
+            if (!Path.GetFullPath(assetPath).StartsWith(Path.GetFullPath(assetsDir)))
+            {
+                Console.WriteLine($"Rejected path traversal attempt: '{assetName}'");
+                await writer.WriteLineAsync("0");
+                return;
+            }
+
+            if (File.Exists(assetPath))
+            {
+                await SendAssetAsync(client, writer, assetName, assetPath);
+            }
+            else
+            {
+                await writer.WriteLineAsync("0");
+                Console.WriteLine($"Asset '{assetName}' not found.");
             }
         }
 

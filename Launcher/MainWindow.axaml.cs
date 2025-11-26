@@ -112,9 +112,24 @@ namespace Launcher
             server.IpAddress = IpAddressTextBox.Text;
             server.Port = port;
             server.IsFavorite = FavoriteCheckBox.IsChecked ?? false;
-            _servers.Remove(server);
-            _servers.Add(server);
+            SortServers();
             StatusTextBlock.Text = "Server updated successfully.";
+        }
+
+        private async void RefreshButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            StatusTextBlock.Text = "Refreshing server statuses...";
+            var tasks = new List<Task>();
+            foreach (var server in _servers)
+            {
+                tasks.Add(Task.Run(async () =>
+                {
+                    server.Status = "Pinging...";
+                    server.Status = await PingServer(server.IpAddress, server.Port) ? "Online" : "Offline";
+                }));
+            }
+            await Task.WhenAll(tasks);
+            StatusTextBlock.Text = "Refresh complete.";
         }
 
         private void NewServerButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)

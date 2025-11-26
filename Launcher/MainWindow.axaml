@@ -10,14 +10,18 @@
     <DockPanel Margin="10">
         <StackPanel DockPanel.Dock="Left" Width="200" Margin="0,0,10,0" Spacing="5">
             <TextBlock FontSize="18" FontWeight="Bold">Servers</TextBlock>
+            <Button Name="RefreshButton" Click="RefreshButton_Click" Content="Refresh All"/>
             <Border Padding="5" BorderThickness="1" BorderBrush="Gray">
                 <ListBox Name="ServerList" SelectionChanged="ServerList_SelectionChanged">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type local:Server}">
-                            <StackPanel Orientation="Horizontal">
-                                <CheckBox IsChecked="{Binding IsFavorite}" IsEnabled="False" />
-                                <TextBlock Text="{Binding Name}" Margin="5,0,0,0" />
-                            </StackPanel>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                    <CheckBox IsChecked="{Binding IsFavorite}" IsEnabled="False" />
+                                    <TextBlock Text="{Binding Name}" Margin="5,0,0,0" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding Status}" Foreground="Gray"/>
+                            </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
