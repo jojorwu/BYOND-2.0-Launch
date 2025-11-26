@@ -70,6 +70,7 @@ namespace Editor
 
         private void OnLoad()
         {
+            if (window == null) return;
             gl = window.CreateOpenGL();
             inputContext = window.CreateInput();
             imGuiController = new ImGuiController(gl, window, inputContext);
@@ -97,6 +98,7 @@ namespace Editor
 
             toolManager.SetActiveTool(toolManager.Tools.FirstOrDefault(), _editorContext);
 
+            if (gl == null) return;
             _viewportPanel = new ViewportPanel(gl, gameApi, toolManager, selectionManager, _editorContext);
             _assetBrowserPanel = new AssetBrowserPanel(_assetManager);
             _inspectorPanel = new InspectorPanel(gameApi, selectionManager, _editorContext);
@@ -114,6 +116,7 @@ namespace Editor
         {
             imGuiController?.Update((float)deltaTime);
 
+            if (gl == null) return;
             gl.ClearColor(0.2f, 0.2f, 0.2f, 1.0f);
             gl.Clear(ClearBufferMask.ColorBufferBit);
 
@@ -140,7 +143,7 @@ namespace Editor
                     _mapControlsPanel!.Draw();
                     break;
                 case AppState.Settings:
-                    _settingsPanel!.Draw();
+                    _settingsPanel?.Draw();
                     break;
             }
 

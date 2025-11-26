@@ -163,21 +163,28 @@ namespace Client
 
                     foreach (var assetName in assetNames)
                     {
-                        if (!ValidationUtils.IsValidAssetName(assetName))
+                        try
                         {
-                            Console.WriteLine($"Server sent invalid asset name: '{assetName}'. Skipping.");
-                            continue;
-                        }
+                            if (!ValidationUtils.IsValidAssetName(assetName))
+                            {
+                                Console.WriteLine($"Server sent invalid asset name: '{assetName}'. Skipping.");
+                                continue;
+                            }
 
-                        writer.WriteLine($"DOWNLOAD {assetName}");
-                        var lengthStr = reader.ReadLine();
-                        if (int.TryParse(lengthStr, out int length) && length > 0)
+                            writer.WriteLine($"DOWNLOAD {assetName}");
+                            var lengthStr = reader.ReadLine();
+                            if (int.TryParse(lengthStr, out int length) && length > 0)
+                            {
+                                var buffer = new byte[length];
+                                _stream.Read(buffer, 0, length);
+                                var assetPath = Path.Combine(serverAssetDir, assetName);
+                                File.WriteAllBytes(assetPath, buffer);
+                                Console.WriteLine($"Downloaded asset: {assetPath}");
+                            }
+                        }
+                        catch (Exception ex)
                         {
-                            var buffer = new byte[length];
-                            _stream.Read(buffer, 0, length);
-                            var assetPath = Path.Combine(serverAssetDir, assetName);
-                            File.WriteAllBytes(assetPath, buffer);
-                            Console.WriteLine($"Downloaded asset: {assetPath}");
+                            Console.WriteLine($"Failed to download asset '{assetName}': {ex.Message}");
                         }
                     }
                 }
