@@ -117,6 +117,11 @@ namespace Launcher
             StatusTextBlock.Text = "Server updated successfully.";
         }
 
+        private void NewServerButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            ServerList.SelectedItem = null;
+        }
+
         private void ClearInputFields()
         {
             NameTextBox.Text = string.Empty;

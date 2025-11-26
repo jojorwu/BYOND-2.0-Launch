@@ -25,34 +25,33 @@
         </StackPanel>
 
         <Panel>
-            <StackPanel VerticalAlignment="Top">
-                <TextBlock FontSize="18" FontWeight="Bold" Margin="0,0,0,10">Server Details</TextBlock>
+            <Border Padding="10" BorderThickness="1" BorderBrush="Gray" CornerRadius="5">
+                <StackPanel>
+                    <TextBlock Text="Server Details" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,0,0,10">
+                        <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">Name:</TextBlock>
+                        <TextBox Grid.Row="0" Grid.Column="1" Name="NameTextBox" />
 
-                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,0,0,10">
-                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">Name:</TextBlock>
-                    <TextBox Grid.Row="0" Grid.Column="1" Name="NameTextBox" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">IP Address:</TextBlock>
+                        <TextBox Grid.Row="1" Grid.Column="1" Margin="0,5,0,0" Name="IpAddressTextBox" />
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">IP Address:</TextBlock>
-                    <TextBox Grid.Row="1" Grid.Column="1" Margin="0,5,0,0" Name="IpAddressTextBox" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">Port:</TextBlock>
+                        <TextBox Grid.Row="2" Grid.Column="1" Margin="0,5,0,0" Name="PortTextBox" />
 
-                    <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">Port:</TextBlock>
-                    <TextBox Grid.Row="2" Grid.Column="1" Margin="0,5,0,0" Name="PortTextBox" />
+                        <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">Favorite:</TextBlock>
+                        <CheckBox Grid.Row="3" Grid.Column="1" Margin="0,5,0,0" Name="FavoriteCheckBox" Click="FavoriteCheckBox_Click" />
+                    </Grid>
 
-                    <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,5,10,0">Favorite:</TextBlock>
-                    <CheckBox Grid.Row="3" Grid.Column="1" Margin="0,5,0,0" Name="FavoriteCheckBox" Click="FavoriteCheckBox_Click" />
-                </Grid>
-
-                <StackPanel Orientation="Horizontal" Spacing="5">
-                    <Button Name="AddButton" Click="AddButton_Click" Content="Add"/>
-                    <Button Name="DeleteButton" Click="DeleteButton_Click" Content="Delete"/>
+                    <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,10,0,0">
+                        <Button Name="NewServerButton" Click="NewServerButton_Click" Content="New"/>
+                        <Button Name="AddButton" Click="AddButton_Click" Content="Add"/>
+                        <Button Name="DeleteButton" Click="DeleteButton_Click" Content="Delete"/>
+                        <Button Name="ConnectButton" Click="ConnectButton_Click" Content="Connect" IsDefault="True"/>
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
+            </Border>
 
-            <Button Name="ConnectButton" Click="ConnectButton_Click" Content="Connect"
-                    HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
-                    IsDefault="True"/>
-
-            <TextBlock Name="StatusTextBlock" VerticalAlignment="Bottom" Margin="0,0,0,30"/>
+            <TextBlock Name="StatusTextBlock" VerticalAlignment="Bottom" Margin="0,0,0,10"/>
         </Panel>
     </DockPanel>
 </Window>
