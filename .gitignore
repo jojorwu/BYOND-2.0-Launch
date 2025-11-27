@@ -1,0 +1,14 @@
+# .NET Core
+.DS_Store
+.vscode/
+
+## Banned Folders
+[Bb]in/
+[Oo]bj/
+
+# Never ignore C# solution & project files
+!*.sln
+!*.csproj
+
+# Misc
+*.log
