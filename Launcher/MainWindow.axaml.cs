@@ -1,93 +1,214 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Text.Json;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Launcher.Services;
 
 namespace Launcher
 {
     public partial class MainWindow : Window
     {
-        private ObservableCollection<Server> _servers;
-        private const string ServersFilePath = "servers.json";
+        private readonly ServerManager _serverManager;
+        private readonly ServerPinger _serverPinger;
+        private readonly UpdateService _updateService;
 
         public MainWindow()
         {
             InitializeComponent();
-            LoadServers();
+
+            _serverManager = new ServerManager();
+            _serverPinger = new ServerPinger();
+            _updateService = new UpdateService();
+
+            this.FindControl<DataGrid>("ServerList").ItemsSource = _serverManager.Servers;
+
+            SetupEventHandlers();
         }
 
-        private void LoadServers()
+        private void SetupEventHandlers()
         {
-            if (File.Exists(ServersFilePath))
+            this.Loaded += MainWindow_Loaded;
+            this.FindControl<Button>("RefreshAllButton").Click += RefreshAllButton_Click;
+            this.FindControl<Button>("AddButton").Click += AddButton_Click;
+            this.FindControl<Button>("EditButton").Click += EditButton_Click;
+            this.FindControl<Button>("DeleteButton").Click += DeleteButton_Click;
+            this.FindControl<Button>("ConnectButton").Click += ConnectButton_Click;
+            this.FindControl<DataGrid>("ServerList").DoubleTapped += ConnectButton_Click;
+        }
+
+        private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
+        {
+            await RefreshAllServersAsync();
+            await CheckForUpdatesAsync();
+        }
+
+        private async void RefreshAllButton_Click(object? sender, RoutedEventArgs e)
+        {
+            await RefreshAllServersAsync();
+        }
+
+        private async Task RefreshAllServersAsync()
+        {
+            var refreshButton = this.FindControl<Button>("RefreshAllButton");
+            var statusText = this.FindControl<TextBlock>("StatusText");
+
+            refreshButton.IsEnabled = false;
+            statusText.Text = "Проверка статуса серверов...";
+
+            var tasks = new List<Task>();
+            foreach (var server in _serverManager.Servers)
             {
-                var json = File.ReadAllText(ServersFilePath);
-                _servers = new ObservableCollection<Server>(JsonSerializer.Deserialize<List<Server>>(json));
+                tasks.Add(_serverPinger.CheckServerStatusAsync(server));
+            }
+            await Task.WhenAll(tasks);
+
+            statusText.Text = "Готово";
+            refreshButton.IsEnabled = true;
+        }
+
+        private async void AddButton_Click(object? sender, RoutedEventArgs e)
+        {
+            var addWindow = new AddEditServerWindow();
+            var result = await addWindow.ShowDialog<bool>(this);
+
+            if (result)
+            {
+                _serverManager.AddServer(addWindow.Server);
+                await _serverPinger.CheckServerStatusAsync(addWindow.Server);
+            }
+        }
+
+        private async void EditButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (this.FindControl<DataGrid>("ServerList").SelectedItem is not Server selectedServer)
+            {
+                await DialogManager.ShowMessageBox(this, "Ошибка", "Пожалуйста, выберите сервер для изменения.");
+                return;
+            }
+
+            var editWindow = new AddEditServerWindow(new Server
+            {
+                Name = selectedServer.Name,
+                IpAddress = selectedServer.IpAddress,
+                Port = selectedServer.Port,
+                IsFavorite = selectedServer.IsFavorite
+            });
+
+            var result = await editWindow.ShowDialog<bool>(this);
+
+            if (result)
+            {
+                selectedServer.Name = editWindow.Server.Name;
+                selectedServer.IpAddress = editWindow.Server.IpAddress;
+                selectedServer.Port = editWindow.Server.Port;
+                selectedServer.IsFavorite = editWindow.Server.IsFavorite;
+                _serverManager.SaveServers();
+                await _serverPinger.CheckServerStatusAsync(selectedServer);
+            }
+        }
+
+        private async void DeleteButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (this.FindControl<DataGrid>("ServerList").SelectedItem is not Server selectedServer)
+            {
+                await DialogManager.ShowMessageBox(this, "Ошибка", "Пожалуйста, выберите сервер для удаления.");
+                return;
+            }
+
+            var confirm = await DialogManager.ShowConfirmationDialog(this, "Подтверждение", $"Вы уверены, что хотите удалить сервер '{selectedServer.Name}'?");
+            if (confirm)
+            {
+                _serverManager.RemoveServer(selectedServer);
+            }
+        }
+
+        private async void ConnectButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (this.FindControl<DataGrid>("ServerList").SelectedItem is not Server selectedServer)
+            {
+                await DialogManager.ShowMessageBox(this, "Ошибка", "Пожалуйста, выберите сервер для подключения.");
+                return;
+            }
+
+            if (selectedServer.Status != "Онлайн")
+            {
+                await DialogManager.ShowMessageBox(this, "Ошибка", "Невозможно подключиться к серверу, который находится не в сети.");
+                return;
+            }
+
+            try
+            {
+                var clientName = OperatingSystem.IsWindows() ? "Client.exe" : "Client";
+                var clientPath = Path.Combine(AppContext.BaseDirectory, "..", "Client", clientName);
+
+                if (!File.Exists(clientPath))
+                {
+                    await DialogManager.ShowMessageBox(this, "Ошибка запуска", $"Не удалось найти исполняемый файл клиента: {Path.GetFullPath(clientPath)}");
+                    return;
+                }
+
+                Process.Start(new ProcessStartInfo { FileName = clientPath, Arguments = $"{selectedServer.IpAddress} {selectedServer.Port}", UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                await DialogManager.ShowMessageBox(this, "Критическая ошибка", $"Не удалось запустить клиент: {ex.Message}");
+            }
+        }
+
+        private async Task CheckForUpdatesAsync()
+        {
+            var statusText = this.FindControl<TextBlock>("StatusText");
+            statusText.Text = "Проверка обновлений...";
+
+            if (await _updateService.CheckForUpdatesAsync() && _updateService.LatestRelease != null)
+            {
+                var release = _updateService.LatestRelease;
+                statusText.Text = $"Доступна новая версия: {release.TagName}";
+                var download = await DialogManager.ShowUpdateDialog(this, release.Name, release.Body);
+                if (download)
+                {
+                    var asset = release.Assets.FirstOrDefault(a => a.Name.EndsWith(".zip"));
+                    if (asset != null)
+                    {
+                        await DownloadAndOpenFile(asset.BrowserDownloadUrl, asset.Name);
+                    }
+                    else
+                    {
+                        await DialogManager.ShowMessageBox(this, "Ошибка обновления", "Не найден zip архив в последнем релизе.");
+                    }
+                }
             }
             else
             {
-                _servers = new ObservableCollection<Server>();
-            }
-
-            this.FindControl<ListBox>("ServerList").ItemsSource = _servers;
-        }
-
-        private void SaveServers()
-        {
-            var json = JsonSerializer.Serialize(_servers);
-            File.WriteAllText(ServersFilePath, json);
-        }
-
-        private void AddButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
-        {
-            var server = new Server
-            {
-                Name = this.FindControl<TextBox>("NameTextBox").Text,
-                IpAddress = this.FindControl<TextBox>("IpAddressTextBox").Text,
-                Port = int.Parse(this.FindControl<TextBox>("PortTextBox").Text)
-            };
-
-            _servers.Add(server);
-            SaveServers();
-        }
-
-        private void DeleteButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
-        {
-            var selectedServer = (Server)this.FindControl<ListBox>("ServerList").SelectedItem;
-            if (selectedServer != null)
-            {
-                _servers.Remove(selectedServer);
-                SaveServers();
+                statusText.Text = "У вас последняя версия.";
             }
         }
 
-        private void ConnectButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
+        private async Task DownloadAndOpenFile(string downloadUrl, string fileName)
         {
-            var selectedServer = (Server)this.FindControl<ListBox>("ServerList").SelectedItem;
-            if (selectedServer != null)
+            var statusText = this.FindControl<TextBlock>("StatusText");
+            try
             {
-                try
-                {
-                    var clientPath = Path.Combine("..", "Client", "bin", "Debug", "net8.0", "Client");
-                    Process.Start(clientPath, $"{selectedServer.IpAddress} {selectedServer.Port}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to start client: {ex.Message}");
-                }
-            }
-        }
+                statusText.Text = $"Скачивание {fileName}...";
+                using var client = new HttpClient();
+                var data = await client.GetByteArrayAsync(downloadUrl);
 
-        private void ServerList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var selectedServer = (Server)this.FindControl<ListBox>("ServerList").SelectedItem;
-            if (selectedServer != null)
+                var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", fileName);
+                await File.WriteAllBytesAsync(downloadsPath, data);
+
+                statusText.Text = $"Файл сохранен в: {downloadsPath}";
+
+                Process.Start(new ProcessStartInfo { FileName = downloadsPath, UseShellExecute = true });
+            }
+            catch (Exception ex)
             {
-                this.FindControl<TextBox>("NameTextBox").Text = selectedServer.Name;
-                this.FindControl<TextBox>("IpAddressTextBox").Text = selectedServer.IpAddress;
-                this.FindControl<TextBox>("PortTextBox").Text = selectedServer.Port.ToString();
+                statusText.Text = "Ошибка скачивания.";
+                await DialogManager.ShowMessageBox(this, "Ошибка", $"Не удалось скачать файл: {ex.Message}");
             }
         }
     }

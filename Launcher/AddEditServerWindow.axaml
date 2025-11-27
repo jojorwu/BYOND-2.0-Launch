@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="300"
+        x:Class="Launcher.AddEditServerWindow"
+        Title="Добавить сервер"
+        Width="400" Height="320"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <StackPanel Margin="20" Spacing="15">
+        <TextBlock Text="Название:"/>
+        <TextBox Name="NameTextBox" Watermark="My Awesome Server"/>
+
+        <TextBlock Text="IP Адрес:"/>
+        <TextBox Name="IpAddressTextBox" Watermark="127.0.0.1"/>
+
+        <TextBlock Text="Порт:"/>
+        <NumericUpDown Name="PortUpDown" Value="7777" Minimum="1" Maximum="65535"/>
+
+        <CheckBox Name="FavoriteCheckBox" Content="Добавить в избранное"/>
+
+        <Grid ColumnDefinitions="*,*" Margin="0,20,0,0">
+            <Button Grid.Column="0" Name="OkButton" Content="OK" Margin="0,0,5,0" Classes="accent"/>
+            <Button Grid.Column="1" Name="CancelButton" Content="Отмена" Margin="5,0,0,0"/>
+        </Grid>
+    </StackPanel>
+</Window>
