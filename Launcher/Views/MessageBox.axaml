@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="150"
+        x:Class="Launcher.Views.MessageBox"
+        Title="Message"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Width="400"
+        Height="150">
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button Name="OkButton" Content="OK" Margin="10" />
+        </StackPanel>
+        <TextBlock Name="MessageTextBlock" Text="Message" Margin="20" TextWrapping="Wrap" />
+    </DockPanel>
+</Window>

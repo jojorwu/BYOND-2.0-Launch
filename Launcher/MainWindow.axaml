@@ -2,32 +2,55 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Launcher"
+        xmlns:local="using:Launcher"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Launcher.MainWindow"
-        Title="BYOND 2.0 Launcher">
-    <Grid ColumnDefinitions="*,2*" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto">
-        <ListBox Grid.Row="1" Grid.Column="0" Margin="5" Name="ServerList" SelectionChanged="ServerList_SelectionChanged">
-            <ListBox.ItemTemplate>
-                <DataTemplate DataType="{x:Type local:Server}">
-                    <TextBlock Text="{Binding Name}" />
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        x:DataType="local:MainWindow"
+        Title="BYOND 2.0 Launcher"
+        Width="850" Height="500"
+        WindowStartupLocation="CenterScreen">
 
-        <TextBlock Grid.Row="0" Grid.Column="1" Margin="5">Server Details</TextBlock>
+    <Grid RowDefinitions="Auto, *, Auto" Margin="15">
 
-        <TextBlock Grid.Row="2" Grid.Column="0" Margin="5">Name:</TextBlock>
-        <TextBox Grid.Row="2" Grid.Column="1" Margin="5" Name="NameTextBox" />
+        <!-- Top Bar with Title and Refresh Button -->
+        <Border Grid.Row="0" Margin="0,0,0,10" Padding="10" CornerRadius="5">
+            <Grid ColumnDefinitions="*, Auto">
+                <TextBlock Grid.Column="0" Text="Серверы" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Name="RefreshAllButton" Content="Обновить все" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
 
-        <TextBlock Grid.Row="3" Grid.Column="0" Margin="5">IP Address:</TextBlock>
-        <TextBox Grid.Row="3" Grid.Column="1" Margin="5" Name="IpAddressTextBox" />
+        <!-- Server List -->
+        <DataGrid Grid.Row="1" Name="ServerList" AutoGenerateColumns="False" IsReadOnly="True"
+                  SelectionMode="Single" CanUserResizeColumns="True" CanUserSortColumns="False"
+                  ItemsSource="{Binding Servers}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="*"/>
+                <DataGridTextColumn Header="IP Адрес" Binding="{Binding IpAddress}" Width="2*"/>
+                <DataGridTextColumn Header="Порт" Binding="{Binding Port}" Width="Auto"/>
+                <DataGridTextColumn Header="Статус" Binding="{Binding Status}" Width="Auto"/>
+                <DataGridTextColumn Header="Пинг" Binding="{Binding Ping}" Width="Auto"/>
+                <DataGridTemplateColumn Header="Избранное">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="local:Server">
+                            <TextBlock Text="★" IsVisible="{Binding IsFavorite}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
 
-        <TextBlock Grid.Row="4" Grid.Column="0" Margin="5">Port:</TextBlock>
-        <TextBox Grid.Row="4" Grid.Column="1" Margin="5" Name="PortTextBox" />
+        <!-- Bottom Bar with Action Buttons and Status -->
+        <Border Grid.Row="2" Margin="0,10,0,0" Padding="10" CornerRadius="5">
+            <Grid ColumnDefinitions="*, Auto, Auto, Auto, Auto">
+                <TextBlock Grid.Column="0" Name="StatusText" Text="Готово" VerticalAlignment="Center" Opacity="0.7"/>
 
-        <Button Grid.Row="5" Grid.Column="1" Margin="5" Name="AddButton" Click="AddButton_Click">Add</Button>
-        <Button Grid.Row="6" Grid.Column="1" Margin="5" Name="DeleteButton" Click="DeleteButton_Click">Delete</Button>
-        <Button Grid.Row="7" Grid.Column="1" Margin="5" Name="ConnectButton" Click="ConnectButton_Click">Connect</Button>
+                <Button Grid.Column="1" Name="AddButton" Content="Добавить" Margin="5,0"/>
+                <Button Grid.Column="2" Name="EditButton" Content="Изменить" Margin="5,0"/>
+                <Button Grid.Column="3" Name="DeleteButton" Content="Удалить" Margin="5,0"/>
+                <Button Grid.Column="4" Name="ConnectButton" Content="Подключиться" Margin="15,0,0,0"
+                        Classes="accent"/>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
