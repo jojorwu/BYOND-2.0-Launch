@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -11,6 +12,7 @@ namespace Launcher
         private string _status = "Checking...";
         private long _ping = -1;
         private bool _isFavorite;
+        private int _timeout = 2000;
 
         public string Name
         {
@@ -46,6 +48,12 @@ namespace Launcher
         {
             get => _isFavorite;
             set => SetField(ref _isFavorite, value);
+        }
+
+        public int Timeout
+        {
+            get => _timeout;
+            set => SetField(ref _timeout, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

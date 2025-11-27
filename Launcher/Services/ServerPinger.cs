@@ -19,8 +19,7 @@ namespace Launcher.Services
                 var connectTask = tcpClient.ConnectAsync(server.IpAddress, server.Port);
                 stopwatch.Start();
 
-                // Timeout after 2 seconds
-                if (await Task.WhenAny(connectTask, Task.Delay(2000)) == connectTask && !connectTask.IsFaulted)
+                if (await Task.WhenAny(connectTask, Task.Delay(server.Timeout)) == connectTask && !connectTask.IsFaulted)
                 {
                     stopwatch.Stop();
                     server.Status = "Онлайн";

@@ -2,8 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="using:Launcher"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Launcher.MainWindow"
+        x:DataType="local:MainWindow"
         Title="BYOND 2.0 Launcher"
         Width="850" Height="500"
         WindowStartupLocation="CenterScreen">
@@ -20,7 +22,8 @@
 
         <!-- Server List -->
         <DataGrid Grid.Row="1" Name="ServerList" AutoGenerateColumns="False" IsReadOnly="True"
-                  SelectionMode="Single" CanUserResizeColumns="True" CanUserSortColumns="False">
+                  SelectionMode="Single" CanUserResizeColumns="True" CanUserSortColumns="False"
+                  ItemsSource="{Binding Servers}">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="*"/>
                 <DataGridTextColumn Header="IP Адрес" Binding="{Binding IpAddress}" Width="2*"/>
@@ -29,7 +32,7 @@
                 <DataGridTextColumn Header="Пинг" Binding="{Binding Ping}" Width="Auto"/>
                 <DataGridTemplateColumn Header="Избранное">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="local:Server">
                             <TextBlock Text="★" IsVisible="{Binding IsFavorite}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>

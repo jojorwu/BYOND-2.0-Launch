@@ -11,11 +11,12 @@ namespace Launcher
         {
             InitializeComponent();
             Server = server ?? new Server();
-            DataContext = Server; // This is for potential future binding, not strictly needed now
+            DataContext = Server;
 
             this.FindControl<TextBox>("NameTextBox").Text = Server.Name;
             this.FindControl<TextBox>("IpAddressTextBox").Text = Server.IpAddress;
             this.FindControl<NumericUpDown>("PortUpDown").Value = Server.Port;
+            this.FindControl<NumericUpDown>("TimeoutUpDown").Value = Server.Timeout;
             this.FindControl<CheckBox>("FavoriteCheckBox").IsChecked = Server.IsFavorite;
 
             this.FindControl<Button>("OkButton").Click += OkButton_Click;
@@ -27,6 +28,7 @@ namespace Launcher
             Server.Name = this.FindControl<TextBox>("NameTextBox").Text;
             Server.IpAddress = this.FindControl<TextBox>("IpAddressTextBox").Text;
             Server.Port = (int)this.FindControl<NumericUpDown>("PortUpDown").Value;
+            Server.Timeout = (int)this.FindControl<NumericUpDown>("TimeoutUpDown").Value;
             Server.IsFavorite = this.FindControl<CheckBox>("FavoriteCheckBox").IsChecked ?? false;
 
             Close(true);

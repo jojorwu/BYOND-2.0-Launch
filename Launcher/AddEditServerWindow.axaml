@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="300"
         x:Class="Launcher.AddEditServerWindow"
         Title="Добавить сервер"
-        Width="400" Height="320"
+        Width="400" Height="370"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
 
@@ -18,6 +18,9 @@
 
         <TextBlock Text="Порт:"/>
         <NumericUpDown Name="PortUpDown" Value="7777" Minimum="1" Maximum="65535"/>
+
+        <TextBlock Text="Тайм-аут (мс):"/>
+        <NumericUpDown Name="TimeoutUpDown" Value="2000" Minimum="100" Maximum="10000" Increment="100"/>
 
         <CheckBox Name="FavoriteCheckBox" Content="Добавить в избранное"/>
 

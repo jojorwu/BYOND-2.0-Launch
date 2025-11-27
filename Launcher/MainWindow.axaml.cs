@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -17,6 +18,8 @@ namespace Launcher
         private readonly ServerPinger _serverPinger;
         private readonly UpdateService _updateService;
 
+        public ObservableCollection<Server> Servers => _serverManager.Servers;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -25,7 +28,7 @@ namespace Launcher
             _serverPinger = new ServerPinger();
             _updateService = new UpdateService();
 
-            this.FindControl<DataGrid>("ServerList").ItemsSource = _serverManager.Servers;
+            DataContext = this;
 
             SetupEventHandlers();
         }
@@ -96,7 +99,8 @@ namespace Launcher
                 Name = selectedServer.Name,
                 IpAddress = selectedServer.IpAddress,
                 Port = selectedServer.Port,
-                IsFavorite = selectedServer.IsFavorite
+                IsFavorite = selectedServer.IsFavorite,
+                Timeout = selectedServer.Timeout
             });
 
             var result = await editWindow.ShowDialog<bool>(this);
@@ -107,6 +111,7 @@ namespace Launcher
                 selectedServer.IpAddress = editWindow.Server.IpAddress;
                 selectedServer.Port = editWindow.Server.Port;
                 selectedServer.IsFavorite = editWindow.Server.IsFavorite;
+                selectedServer.Timeout = editWindow.Server.Timeout;
                 _serverManager.SaveServers();
                 await _serverPinger.CheckServerStatusAsync(selectedServer);
             }
