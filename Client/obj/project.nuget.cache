@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "2gjMGJt4hT0=",
+  "dgSpecHash": "7s250oRpdmM=",
   "success": true,
   "projectFilePath": "/app/Client/Client.csproj",
   "expectedPackageFiles": [
@@ -20,7 +20,7 @@
     "/home/jules/.nuget/packages/silk.net.windowing/2.22.0/silk.net.windowing.2.22.0.nupkg.sha512",
     "/home/jules/.nuget/packages/silk.net.windowing.common/2.22.0/silk.net.windowing.common.2.22.0.nupkg.sha512",
     "/home/jules/.nuget/packages/silk.net.windowing.glfw/2.22.0/silk.net.windowing.glfw.2.22.0.nupkg.sha512",
-    "/home/jules/.nuget/packages/sixlabors.imagesharp/3.1.5/sixlabors.imagesharp.3.1.5.nupkg.sha512",
+    "/home/jules/.nuget/packages/sixlabors.imagesharp/3.1.12/sixlabors.imagesharp.3.1.12.nupkg.sha512",
     "/home/jules/.nuget/packages/system.memory/4.5.5/system.memory.4.5.5.nupkg.sha512",
     "/home/jules/.nuget/packages/system.numerics.vectors/4.5.0/system.numerics.vectors.4.5.0.nupkg.sha512",
     "/home/jules/.nuget/packages/system.runtime.compilerservices.unsafe/6.0.0/system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
