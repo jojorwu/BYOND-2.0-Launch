@@ -2,15 +2,8 @@
 # Installer script for BYOND 2.0 and BYOND Launch on Linux
 
 # --- Configuration ---
-LAUNCHER_URL="https://github.com/jojorwu/BYOND-2.0-Launch.git"
-LAUNCHER_BRANCH="feature/game-launcher"
-LAUNCHER_SRC_DIR="BYOND-2.0-Launch"
-
-BYOND2_URL="https://github.com/jojorwu/BYOND-2.0.git"
-BYOND2_BRANCH="main"
-BYOND2_SRC_DIR="BYOND-2.0"
-
 INSTALL_DIR="$HOME/BYOND2.0"
+DIST_DIR="dist"
 
 # --- Functions ---
 install_package() {
@@ -34,26 +27,10 @@ install_package() {
     fi
 }
 
-ensure_dotnet_install_script() {
-    if [ ! -f "dotnet-install.sh" ]; then
-        echo "Downloading dotnet-install.sh..."
-        wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh
-        chmod +x dotnet-install.sh
-    fi
-}
-
 check_dependencies() {
     echo "Checking for dependencies..."
-    if ! command -v git &> /dev/null; then
-        install_package "git"
-    fi
     if ! command -v zenity &> /dev/null; then
         install_package "zenity"
-    fi
-    if ! command -v $HOME/.dotnet/dotnet &> /dev/null || ! $HOME/.dotnet/dotnet --list-sdks | grep "8."; then
-        echo "dotnet 8 could not be found. Installing the .NET 8 SDK..."
-        ensure_dotnet_install_script
-        ./dotnet-install.sh --version 8.0.100
     fi
 }
 
@@ -79,33 +56,14 @@ select_install_dir() {
 
 install_component() {
     local component_name="$1"
-    local git_url="$2"
-    local git_branch="$3"
-    local src_dir="$4"
-    local output_dir="$5"
-    local exec_name="$6"
+    local src_dir="$2"
+    local output_dir="$3"
+    local exec_name="$4"
 
     echo "Installing $component_name..."
-    cd "$INSTALL_DIR"
-    git clone --branch "$git_branch" "$git_url" "$src_dir"
-    cd "$src_dir"
+    mkdir -p "$INSTALL_DIR/$output_dir"
+    cp -r "$src_dir"/* "$INSTALL_DIR/$output_dir/"
 
-    if [ "$component_name" == "BYOND Launch" ]; then
-        $HOME/.dotnet/dotnet add Launcher/Launcher.csproj package Avalonia.Controls.DataGrid -v 11.0.0
-        $HOME/.dotnet/dotnet build Launcher/Launcher.csproj -c Release -o "$INSTALL_DIR/$output_dir"
-    elif [ "$component_name" == "BYOND 2.0" ]; then
-        if ! $HOME/.dotnet/dotnet --list-sdks | grep "9."; then
-            echo "dotnet 9 could not be found. Installing..."
-            ensure_dotnet_install_script
-            ./dotnet-install.sh --version 9.0.304
-        fi
-        $HOME/.dotnet/dotnet build BYOND2.0.sln -c Release
-        mkdir -p "$INSTALL_DIR/$output_dir"
-        cp Client/bin/Release/net9.0/* "$INSTALL_DIR/$output_dir/"
-    fi
-
-    cd ..
-    rm -rf "$src_dir"
     create_desktop_file "$component_name" "$INSTALL_DIR/$output_dir/$exec_name"
 }
 
@@ -146,7 +104,7 @@ BTN_INSTALL="Установить"
 BTN_CANCEL="Отмена"
 TITLE_INSTALL_PROGRESS="Идет установка"
 TEXT_INSTALL_PROGRESS="Установка %s..."
-TEXT_ERROR="Произошла ошибка при установке %s. Пожалуйста, посмотрите лог для получения подробной информации."
+TEXT_ERROR="Произошла ошибка при установке %s."
 TITLE_ERROR_LOG="Лог ошибок: %s"
 TITLE_SUCCESS="Установка успешно завершена"
 TEXT_SUCCESS="Выбранные компоненты были успешно установлены."
@@ -170,7 +128,7 @@ BTN_INSTALL="Install"
 BTN_CANCEL="Cancel"
 TITLE_INSTALL_PROGRESS="Installation in Progress"
 TEXT_INSTALL_PROGRESS="Installing %s..."
-TEXT_ERROR="An error occurred while installing %s. Please see the log for details."
+TEXT_ERROR="An error occurred while installing %s."
 TITLE_ERROR_LOG="Error Log: %s"
 TITLE_SUCCESS="Installation Successful"
 TEXT_SUCCESS="The selected components have been successfully installed."
@@ -189,23 +147,19 @@ if [ $? -ne 0 ]; then
     exit 0
 fi
 
-TMP_DIR=$(mktemp -d)
-LOG_FILE="$TMP_DIR/byond_installer.log"
-trap 'rm -rf "$TMP_DIR"' EXIT
-
 for choice in $choices; do
     (
         if [ "$choice" == "BYOND Launch" ]; then
-            install_component "BYOND Launch" "$LAUNCHER_URL" "$LAUNCHER_BRANCH" "$LAUNCHER_SRC_DIR" "Launcher" "Launcher"
+            install_component "BYOND Launch" "$DIST_DIR/Launcher" "Launcher" "Launcher"
         elif [ "$choice" == "BYOND 2.0" ]; then
-            install_component "BYOND 2.0" "$BYOND2_URL" "$BYOND2_BRANCH" "$BYOND2_SRC_DIR" "BYOND2" "Client"
+            install_component "BYOND 2.0" "$DIST_DIR/Client" "BYOND2" "Client"
         fi
-    ) &> "$LOG_FILE" | zenity --progress --title="$TITLE_INSTALL_PROGRESS" --text="$(printf "$TEXT_INSTALL_PROGRESS" "$choice")" --pulsate --auto-close --window-icon="installer_files/icon.ico"
+    ) | zenity --progress --title="$TITLE_INSTALL_PROGRESS" --text="$(printf "$TEXT_INSTALL_PROGRESS" "$choice")" --pulsate --auto-close --window-icon="installer_files/icon.ico"
 
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         zenity --error --text="$(printf "$TEXT_ERROR" "$choice")" --window-icon="installer_files/icon.ico"
-        zenity --text-info --filename="$LOG_FILE" --title="$(printf "$TITLE_ERROR_LOG" "$choice")" --width=800 --height=600 --window-icon="installer_files/icon.ico"
         exit 1
     fi
 done
+
 zenity --info --title="$TITLE_SUCCESS" --text="$TEXT_SUCCESS" --window-icon="installer_files/icon.ico"
