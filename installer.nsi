@@ -18,6 +18,9 @@
 
 ; --- UI Settings ---
 !define MUI_ABORTWARNING
+!define MUI_ICON "installer_files/icon.ico"
+!define MUI_HEADERIMAGE
+!define MUI_HEADERIMAGE_BITMAP "installer_files/header.bmp"
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_COMPONENTS
@@ -48,13 +51,13 @@ Function .onInit
     Abort
 
   ; Check for .NET 8 SDK
-  nsExec::ExecToLog 'dotnet --list-sdks | findstr "8."'
+  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" --list-sdks | findstr "8."'
   Pop $0
   IfErrors install_dotnet8
 
 dotnet9_check:
   ; Check for .NET 9 SDK
-  nsExec::ExecToLog 'dotnet --list-sdks | findstr "9."'
+  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" --list-sdks | findstr "9."'
   Pop $0
   IfErrors install_dotnet9
   Goto done
@@ -95,8 +98,10 @@ Section "BYOND Launch" SEC_LAUNCHER
     MessageBox MB_OK|MB_ICONSTOP "Failed to clone BYOND Launch."
     Abort
 
+  DetailPrint "Adding Avalonia.Controls.DataGrid package..."
+  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" add "$INSTDIR\${LAUNCHER_SRC_DIR}\Launcher\Launcher.csproj" package Avalonia.Controls.DataGrid -v 11.0.0'
   DetailPrint "Compiling BYOND Launch..."
-  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet" build "$INSTDIR\${LAUNCHER_SRC_DIR}\Launcher\Launcher.csproj" -c Release -o "$INSTDIR\Launcher"'
+  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" build "$INSTDIR\${LAUNCHER_SRC_DIR}\Launcher\Launcher.csproj" -c Release -o "$INSTDIR\Launcher"'
   Pop $0
   IfErrors 0 +2
     MessageBox MB_OK|MB_ICONSTOP "Failed to compile BYOND Launch."
@@ -117,15 +122,12 @@ Section "BYOND 2" SEC_BYOND2
     MessageBox MB_OK|MB_ICONSTOP "Failed to clone BYOND 2.0."
     Abort
 
-  DetailPrint "Compiling BYOND 2.0..."
-  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet" build "$INSTDIR\${BYOND2_SRC_DIR}\BYOND2.0.sln" -c Release'
+  DetailPrint "Publishing BYOND 2.0..."
+  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" publish "$INSTDIR\${BYOND2_SRC_DIR}\Client\Client.csproj" -c Release -o "$INSTDIR\BYOND2"'
   Pop $0
   IfErrors 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to compile BYOND 2.0."
+    MessageBox MB_OK|MB_ICONSTOP "Failed to publish BYOND 2.0."
     Abort
-
-  CreateDirectory "$INSTDIR\BYOND2"
-  CopyFiles /SILENT "$INSTDIR\${BYOND2_SRC_DIR}\Client\bin\Release\net9.0\*.*" "$INSTDIR\BYOND2"
 
   RMDir /r "$INSTDIR\${BYOND2_SRC_DIR}"
 

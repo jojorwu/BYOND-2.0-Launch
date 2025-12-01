@@ -11,40 +11,46 @@ BYOND2_BRANCH="main"
 BYOND2_SRC_DIR="BYOND-2.0"
 
 INSTALL_DIR="$HOME/BYOND2.0"
-DOTNET8_PATH="$HOME/.dotnet/dotnet"
-DOTNET9_PATH="$HOME/.dotnet9/dotnet"
 
 # --- Functions ---
+ensure_dotnet_install_script() {
+    if [ ! -f "dotnet-install.sh" ]; then
+        echo "Downloading dotnet-install.sh..."
+        wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh
+        chmod +x dotnet-install.sh
+    fi
+}
+
 check_dependencies() {
     echo "Checking for dependencies..."
     if ! command -v git &> /dev/null; then
-        echo "git could not be found. Installing git..."
-        sudo apt-get update && sudo apt-get install -y git
+        zenity --error --text="git could not be found. Please install git to continue."
+        exit 1
     fi
-    if ! command -v dotnet &> /dev/null || ! dotnet --list-sdks | grep "8."; then
+    if ! command -v zenity &> /dev/null; then
+        echo "zenity could not be found. Please install zenity to continue."
+        exit 1
+    fi
+    if ! command -v $HOME/.dotnet/dotnet &> /dev/null || ! $HOME/.dotnet/dotnet --list-sdks | grep "8."; then
         echo "dotnet 8 could not be found. Installing the .NET 8 SDK..."
-        wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh
-        chmod +x dotnet-install.sh
+        ensure_dotnet_install_script
         ./dotnet-install.sh --version 8.0.100
     fi
 }
 
-check_dotnet9() {
-    if ! dotnet --list-sdks | grep "9."; then
-        echo "dotnet 9 could not be found. Installing..."
-        ./dotnet-install.sh --version 9.0.304
-    fi
-}
-
 select_components() {
-    echo "Select the components to install (e.g., 1 2 to install both):"
-    echo "1) BYOND Launch"
-    echo "2) BYOND 2.0"
-    read -p "Enter your choice(s): " choices
+    choices=$(zenity --list \
+        --title="Select Components" \
+        --text="Select the components to install:" \
+        --checklist \
+        --column="Select" --column="Component" \
+        TRUE "BYOND Launch" \
+        TRUE "BYOND 2.0" \
+        --separator=" ")
 }
 
 select_install_dir() {
-    read -p "Enter installation directory [$INSTALL_DIR]: " user_install_dir
+    user_install_dir=$(zenity --file-selection --directory --title="Select Installation Directory")
     if [ ! -z "$user_install_dir" ]; then
         INSTALL_DIR=$user_install_dir
     fi
@@ -65,7 +71,11 @@ install_launcher() {
 }
 
 install_byond2() {
-    check_dotnet9
+    if ! $HOME/.dotnet/dotnet --list-sdks | grep "9."; then
+        echo "dotnet 9 could not be found. Installing..."
+        ensure_dotnet_install_script
+        ./dotnet-install.sh --version 9.0.304
+    fi
     echo "Installing BYOND 2.0..."
     cd $INSTALL_DIR
     git clone --branch $BYOND2_BRANCH $BYOND2_URL
@@ -96,13 +106,29 @@ check_dependencies
 select_components
 select_install_dir
 
+LOG_FILE="/tmp/byond_installer.log"
+rm -f $LOG_FILE
+
 for choice in $choices; do
-    if [ "$choice" == "1" ]; then
-        install_launcher
+    if [ "$choice" == "BYOND Launch" ]; then
+        (
+            install_launcher &> $LOG_FILE
+        ) | zenity --progress --title="Installing..." --text="Installing BYOND Launch..." --pulsate --auto-close
+        if [ $? -ne 0 ]; then
+            zenity --error --text="Failed to install BYOND Launch. See $LOG_FILE for details."
+            zenity --text-info --filename=$LOG_FILE --title="Installation Log" --width=800 --height=600
+            exit 1
+        fi
     fi
-    if [ "$choice" == "2" ]; then
-        install_byond2
+    if [ "$choice" == "BYOND 2.0" ]; then
+        (
+            install_byond2 &> $LOG_FILE
+        ) | zenity --progress --title="Installing..." --text="Installing BYOND 2.0..." --pulsate --auto-close
+        if [ $? -ne 0 ]; then
+            zenity --error --text="Failed to install BYOND 2.0. See $LOG_FILE for details."
+            zenity --text-info --filename=$LOG_FILE --title="Installation Log" --width=800 --height=600
+            exit 1
+        fi
     fi
 done
-
-echo "Installation complete."
+zenity --info --text="Installation complete."
