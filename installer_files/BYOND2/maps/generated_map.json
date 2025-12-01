@@ -1,0 +1,429 @@
+{
+  "Width": 10,
+  "Height": 10,
+  "Depth": 1,
+  "Turfs": [
+    [
+      [
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        }
+      ],
+      [
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        }
+      ],
+      [
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        }
+      ],
+      [
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        }
+      ],
+      [
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        }
+      ],
+      [
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        }
+      ],
+      [
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        }
+      ],
+      [
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        }
+      ],
+      [
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 1,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        }
+      ],
+      [
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        },
+        {
+          "Id": 2,
+          "Contents": []
+        }
+      ]
+    ]
+  ]
+}
