@@ -11,6 +11,7 @@ BYOND2_BRANCH="main"
 BYOND2_SRC_DIR="BYOND-2.0"
 
 INSTALL_DIR="$HOME/BYOND2.0"
+DOTNET_EXEC="$HOME/.dotnet/dotnet"
 
 # --- Functions ---
 install_package() {
@@ -50,10 +51,10 @@ check_dependencies() {
     if ! command -v zenity &> /dev/null; then
         install_package "zenity"
     fi
-    if ! command -v $HOME/.dotnet/dotnet &> /dev/null || ! $HOME/.dotnet/dotnet --list-sdks | grep "8."; then
-        echo "dotnet 8 could not be found. Installing the .NET 8 SDK..."
+    if ! command -v $DOTNET_EXEC &> /dev/null || ! $DOTNET_EXEC --list-sdks | grep -q "^9\."; then
+        echo ".NET 9 SDK could not be found. Installing..."
         ensure_dotnet_install_script
-        ./dotnet-install.sh --version 8.0.100
+        ./dotnet-install.sh --channel 9.0
     fi
 }
 
@@ -84,25 +85,14 @@ install_component() {
     local src_dir="$4"
     local output_dir="$5"
     local exec_name="$6"
+    local proj_path="$7"
 
     echo "Installing $component_name..."
     cd "$INSTALL_DIR"
     git clone --branch "$git_branch" "$git_url" "$src_dir"
     cd "$src_dir"
 
-    if [ "$component_name" == "BYOND Launch" ]; then
-        $HOME/.dotnet/dotnet add Launcher/Launcher.csproj package Avalonia.Controls.DataGrid -v 11.0.0
-        $HOME/.dotnet/dotnet build Launcher/Launcher.csproj -c Release -o "$INSTALL_DIR/$output_dir"
-    elif [ "$component_name" == "BYOND 2.0" ]; then
-        if ! $HOME/.dotnet/dotnet --list-sdks | grep "9."; then
-            echo "dotnet 9 could not be found. Installing..."
-            ensure_dotnet_install_script
-            ./dotnet-install.sh --version 9.0.304
-        fi
-        $HOME/.dotnet/dotnet build BYOND2.0.sln -c Release
-        mkdir -p "$INSTALL_DIR/$output_dir"
-        cp Client/bin/Release/net9.0/* "$INSTALL_DIR/$output_dir/"
-    fi
+    $DOTNET_EXEC publish "$proj_path" -c Release -o "$INSTALL_DIR/$output_dir"
 
     cd ..
     rm -rf "$src_dir"
@@ -196,9 +186,9 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 for choice in $choices; do
     (
         if [ "$choice" == "BYOND Launch" ]; then
-            install_component "BYOND Launch" "$LAUNCHER_URL" "$LAUNCHER_BRANCH" "$LAUNCHER_SRC_DIR" "Launcher" "Launcher"
+            install_component "BYOND Launch" "$LAUNCHER_URL" "$LAUNCHER_BRANCH" "$LAUNCHER_SRC_DIR" "Launcher" "Launcher" "Launcher/Launcher.csproj"
         elif [ "$choice" == "BYOND 2.0" ]; then
-            install_component "BYOND 2.0" "$BYOND2_URL" "$BYOND2_BRANCH" "$BYOND2_SRC_DIR" "BYOND2" "Client"
+            install_component "BYOND 2.0" "$BYOND2_URL" "$BYOND2_BRANCH" "$BYOND2_SRC_DIR" "BYOND2" "Client" "Client/Client.csproj"
         fi
     ) &> "$LOG_FILE" | zenity --progress --title="$TITLE_INSTALL_PROGRESS" --text="$(printf "$TEXT_INSTALL_PROGRESS" "$choice")" --pulsate --auto-close --window-icon="installer_files/icon.ico"
 
