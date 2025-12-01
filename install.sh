@@ -13,6 +13,27 @@ BYOND2_SRC_DIR="BYOND-2.0"
 INSTALL_DIR="$HOME/BYOND2.0"
 
 # --- Functions ---
+install_package() {
+    local package_name=$1
+    zenity --question --text="The required package '$package_name' is not installed. Do you want to try to install it automatically? (Requires sudo)"
+    if [ $? -eq 0 ]; then
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y $package_name
+        elif command -v dnf &> /dev/null; then
+            sudo dnf install -y $package_name
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y $package_name
+        elif command -v pacman &> /dev/null; then
+            sudo pacman -S --noconfirm $package_name
+        else
+            zenity --error --text="Could not find a supported package manager. Please install '$package_name' manually."
+            exit 1
+        fi
+    else
+        exit 1
+    fi
+}
+
 ensure_dotnet_install_script() {
     if [ ! -f "dotnet-install.sh" ]; then
         echo "Downloading dotnet-install.sh..."
@@ -24,12 +45,10 @@ ensure_dotnet_install_script() {
 check_dependencies() {
     echo "Checking for dependencies..."
     if ! command -v git &> /dev/null; then
-        zenity --error --text="git could not be found. Please install git to continue."
-        exit 1
+        install_package "git"
     fi
     if ! command -v zenity &> /dev/null; then
-        echo "zenity could not be found. Please install zenity to continue."
-        exit 1
+        install_package "zenity"
     fi
     if ! command -v $HOME/.dotnet/dotnet &> /dev/null || ! $HOME/.dotnet/dotnet --list-sdks | grep "8."; then
         echo "dotnet 8 could not be found. Installing the .NET 8 SDK..."
