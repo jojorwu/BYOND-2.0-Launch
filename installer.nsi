@@ -34,7 +34,7 @@
 Function PageShowReady
   FindWindow $R0 "#32770" "" $HWNDPARENT
   GetDlgItem $R1 $R0 1028 ; Static control for summary
-  SendMessage $R1 ${WM_SETTEXT} 0 "STR:Установка будет произведена в:\r\n$INSTDIR\r\n\r\nВыбранные компоненты:\r\n"
+  SendMessage $R1 ${WM_SETTEXT} 0 "$(ReadyText)"
 
   ${ForEachSection} SectionCallback
 FunctionEnd
@@ -52,6 +52,10 @@ FunctionEnd
 
 !insertmacro MUI_LANGUAGE "Russian"
 !insertmacro MUI_LANGUAGE "English"
+
+; --- Language Strings ---
+LangString ReadyText ${LANG_RUSSIAN} "Установка будет произведена в:$\r$\n$INSTDIR$\r$\n$\r$\nВыбранные компоненты:"
+LangString ReadyText ${LANG_ENGLISH} "Setup will install to:$\r$\n$INSTDIR$\r$\n$\r$\nSelected components:"
 
 ; --- Installer Settings ---
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
@@ -105,7 +109,10 @@ FunctionEnd
 ; --- Macros ---
 !macro InstallComponent NAME URL BRANCH SRC_DIR CSPROJ_PATH OUTPUT_DIR EXEC_NAME
   SetOutPath "$INSTDIR"
-  DetailPrint "Cloning ${NAME}..."
+  SetDetailsPrint textonly
+  DetailPrint "Installing ${NAME}..."
+  SetDetailsPrint listonly
+  DetailPrint "Cloning repository..."
   nsExec::ExecToLog 'git clone --branch "${BRANCH}" "${URL}" "$INSTDIR\${SRC_DIR}"'
   Pop $0
   IfErrors 0 +2
@@ -113,12 +120,12 @@ FunctionEnd
     Abort
 
   ${If} ${NAME} == "BYOND Launch"
-    DetailPrint "Adding Avalonia.Controls.DataGrid package..."
+    DetailPrint "Adding required packages..."
     nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" add "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" package Avalonia.Controls.DataGrid -v 11.0.0'
-    DetailPrint "Compiling ${NAME}..."
+    DetailPrint "Compiling project..."
     nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" build "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" -c Release -o "$INSTDIR\${OUTPUT_DIR}"'
   ${ElseIf} ${NAME} == "BYOND 2"
-    ; Check for .NET 9 SDK
+    DetailPrint "Checking for .NET 9 SDK..."
     nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" --list-sdks | findstr "9."'
     Pop $0
     IfErrors install_dotnet9_sec
@@ -131,10 +138,11 @@ install_dotnet9_sec:
     StrCmp $0 "OK" 0 +2
       MessageBox MB_OK|MB_ICONSTOP "Failed to download .NET 9 SDK installer script: $0"
       Abort
+    DetailPrint "Installing .NET 9 SDK..."
     nsExec::ExecToLog 'powershell -ExecutionPolicy Bypass -File "$PLUGINSDIR\dotnet-install.ps1" -Version 9.0.304 -InstallDir "$PROGRAMFILES\dotnet"'
 
 publish_byond2:
-    DetailPrint "Publishing ${NAME}..."
+    DetailPrint "Publishing project..."
     nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" publish "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" -c Release -o "$INSTDIR\${OUTPUT_DIR}"'
   ${EndIf}
   Pop $0
@@ -142,8 +150,10 @@ publish_byond2:
     MessageBox MB_OK|MB_ICONSTOP "Failed to compile/publish ${NAME}."
     Abort
 
+  DetailPrint "Cleaning up..."
   RMDir /r "$INSTDIR\${SRC_DIR}"
 
+  DetailPrint "Creating shortcuts..."
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${NAME}.lnk" "$INSTDIR\${OUTPUT_DIR}\${EXEC_NAME}"
 !macroend

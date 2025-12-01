@@ -59,17 +59,17 @@ check_dependencies() {
 
 select_components() {
     choices=$(zenity --list \
-        --title="Select Components" \
-        --text="Select the components to install:" \
+        --title="Component Selection" \
+        --text="Please select the components you want to install:" \
         --checklist \
-        --column="Select" --column="Component" \
+        --column="Install?" --column="Component Name" \
         TRUE "BYOND Launch" \
         TRUE "BYOND 2.0" \
         --separator=" ")
 }
 
 select_install_dir() {
-    user_install_dir=$(zenity --file-selection --directory --title="Select Installation Directory")
+    user_install_dir=$(zenity --file-selection --directory --title="Choose Installation Directory")
     if [ ! -z "$user_install_dir" ]; then
         INSTALL_DIR=$user_install_dir
     fi
@@ -123,18 +123,16 @@ Terminal=false" > $desktop_file
 }
 
 # --- Main ---
-zenity --info --title="Welcome" --text="Welcome to the BYOND 2.0 and BYOND Launch installer.\n\nThis installer will guide you through the process of installing one or both of these applications."
+zenity --info --title="Welcome to the BYOND Installer" --text="This wizard will guide you through the installation of BYOND 2.0 and/or BYOND Launch."
 check_dependencies
 select_components
 select_install_dir
 
-zenity --question --title="Ready to Install" --text="The installer is ready to begin.\n\nInstallation Directory:\n$INSTALL_DIR\n\nComponents:\n$choices\n\nDo you want to continue?"
+summary="The following will be installed:\n\n<b>Components:</b>\n- $(echo $choices | sed 's/ /\\n- /g')\n\n<b>Installation Directory:</b>\n$INSTALL_DIR"
+zenity --question --title="Installation Summary" --text="$summary\n\nDo you want to proceed?" --ok-label="Install" --cancel-label="Cancel"
 if [ $? -ne 0 ]; then
     exit 0
 fi
-
-LOG_FILE="/tmp/byond_installer.log"
-rm -f $LOG_FILE
 
 TMP_DIR=$(mktemp -d)
 LOG_FILE="$TMP_DIR/byond_installer.log"
@@ -147,12 +145,12 @@ for choice in $choices; do
         elif [ "$choice" == "BYOND 2.0" ]; then
             install_component "BYOND 2.0" "$BYOND2_URL" "$BYOND2_BRANCH" "$BYOND2_SRC_DIR" "BYOND2" "Client"
         fi
-    ) &> "$LOG_FILE" | zenity --progress --title="Installing..." --text="Installing $choice..." --pulsate --auto-close
+    ) &> "$LOG_FILE" | zenity --progress --title="Installation in Progress" --text="Installing $choice..." --pulsate --auto-close
 
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
-        zenity --error --text="Failed to install $choice. See $LOG_FILE for details."
-        zenity --text-info --filename="$LOG_FILE" --title="Installation Log for $choice" --width=800 --height=600
+        zenity --error --text="An error occurred while installing $choice. Please see the log for details."
+        zenity --text-info --filename="$LOG_FILE" --title="Error Log: $choice" --width=800 --height=600
         exit 1
     fi
 done
-zenity --info --text="Installation complete."
+zenity --info --title="Installation Successful" --text="The selected components have been successfully installed."
