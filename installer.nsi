@@ -88,51 +88,43 @@ Function un.onInit
   !insertmacro MUI_UNGETLANGUAGE
 FunctionEnd
 
-; --- Sections ---
-Section "BYOND Launch" SEC_LAUNCHER
+; --- Macros ---
+!macro InstallComponent NAME URL BRANCH SRC_DIR CSPROJ_PATH OUTPUT_DIR EXEC_NAME
   SetOutPath "$INSTDIR"
-  DetailPrint "Cloning BYOND Launch..."
-  nsExec::ExecToLog 'git clone --branch "${LAUNCHER_BRANCH}" "${LAUNCHER_URL}" "$INSTDIR\${LAUNCHER_SRC_DIR}"'
+  DetailPrint "Cloning ${NAME}..."
+  nsExec::ExecToLog 'git clone --branch "${BRANCH}" "${URL}" "$INSTDIR\${SRC_DIR}"'
   Pop $0
   IfErrors 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to clone BYOND Launch."
+    MessageBox MB_OK|MB_ICONSTOP "Failed to clone ${NAME}."
     Abort
 
-  DetailPrint "Adding Avalonia.Controls.DataGrid package..."
-  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" add "$INSTDIR\${LAUNCHER_SRC_DIR}\Launcher\Launcher.csproj" package Avalonia.Controls.DataGrid -v 11.0.0'
-  DetailPrint "Compiling BYOND Launch..."
-  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" build "$INSTDIR\${LAUNCHER_SRC_DIR}\Launcher\Launcher.csproj" -c Release -o "$INSTDIR\Launcher"'
+  ${If} ${NAME} == "BYOND Launch"
+    DetailPrint "Adding Avalonia.Controls.DataGrid package..."
+    nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" add "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" package Avalonia.Controls.DataGrid -v 11.0.0'
+    DetailPrint "Compiling ${NAME}..."
+    nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" build "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" -c Release -o "$INSTDIR\${OUTPUT_DIR}"'
+  ${ElseIf} ${NAME} == "BYOND 2"
+    DetailPrint "Publishing ${NAME}..."
+    nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" publish "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" -c Release -o "$INSTDIR\${OUTPUT_DIR}"'
+  ${EndIf}
   Pop $0
   IfErrors 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to compile BYOND Launch."
+    MessageBox MB_OK|MB_ICONSTOP "Failed to compile/publish ${NAME}."
     Abort
 
-  RMDir /r "$INSTDIR\${LAUNCHER_SRC_DIR}"
+  RMDir /r "$INSTDIR\${SRC_DIR}"
 
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BYOND Launch.lnk" "$INSTDIR\Launcher\${LAUNCHER_EXECUTABLE_NAME}"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${NAME}.lnk" "$INSTDIR\${OUTPUT_DIR}\${EXEC_NAME}"
+!macroend
+
+; --- Sections ---
+Section "BYOND Launch" SEC_LAUNCHER
+  !insertmacro InstallComponent "BYOND Launch" "${LAUNCHER_URL}" "${LAUNCHER_BRANCH}" "${LAUNCHER_SRC_DIR}" "Launcher\Launcher.csproj" "Launcher" "${LAUNCHER_EXECUTABLE_NAME}"
 SectionEnd
 
 Section "BYOND 2" SEC_BYOND2
-  SetOutPath "$INSTDIR"
-  DetailPrint "Cloning BYOND 2.0..."
-  nsExec::ExecToLog 'git clone --branch "${BYOND2_BRANCH}" "${BYOND2_URL}" "$INSTDIR\${BYOND2_SRC_DIR}"'
-  Pop $0
-  IfErrors 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to clone BYOND 2.0."
-    Abort
-
-  DetailPrint "Publishing BYOND 2.0..."
-  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" publish "$INSTDIR\${BYOND2_SRC_DIR}\Client\Client.csproj" -c Release -o "$INSTDIR\BYOND2"'
-  Pop $0
-  IfErrors 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to publish BYOND 2.0."
-    Abort
-
-  RMDir /r "$INSTDIR\${BYOND2_SRC_DIR}"
-
-  CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BYOND 2.0.lnk" "$INSTDIR\BYOND2\${BYOND2_EXECUTABLE_NAME}"
+  !insertmacro InstallComponent "BYOND 2" "${BYOND2_URL}" "${BYOND2_BRANCH}" "${BYOND2_SRC_DIR}" "Client\Client.csproj" "BYOND2" "${BYOND2_EXECUTABLE_NAME}"
 SectionEnd
 
 Section -Post

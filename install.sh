@@ -77,34 +77,36 @@ select_install_dir() {
     mkdir -p $INSTALL_DIR
 }
 
-install_launcher() {
-    echo "Installing BYOND Launch..."
-    cd $INSTALL_DIR
-    git clone --branch $LAUNCHER_BRANCH $LAUNCHER_URL
-    cd $LAUNCHER_SRC_DIR
-    $HOME/.dotnet/dotnet add Launcher/Launcher.csproj package Avalonia.Controls.DataGrid -v 11.0.0
-    $HOME/.dotnet/dotnet build Launcher/Launcher.csproj -c Release -o $INSTALL_DIR/Launcher
-    cd ..
-    rm -rf $LAUNCHER_SRC_DIR
-    create_desktop_file "BYOND Launch" "$INSTALL_DIR/Launcher/Launcher"
-}
+install_component() {
+    local component_name="$1"
+    local git_url="$2"
+    local git_branch="$3"
+    local src_dir="$4"
+    local output_dir="$5"
+    local exec_name="$6"
 
-install_byond2() {
-    if ! $HOME/.dotnet/dotnet --list-sdks | grep "9."; then
-        echo "dotnet 9 could not be found. Installing..."
-        ensure_dotnet_install_script
-        ./dotnet-install.sh --version 9.0.304
+    echo "Installing $component_name..."
+    cd "$INSTALL_DIR"
+    git clone --branch "$git_branch" "$git_url" "$src_dir"
+    cd "$src_dir"
+
+    if [ "$component_name" == "BYOND Launch" ]; then
+        $HOME/.dotnet/dotnet add Launcher/Launcher.csproj package Avalonia.Controls.DataGrid -v 11.0.0
+        $HOME/.dotnet/dotnet build Launcher/Launcher.csproj -c Release -o "$INSTALL_DIR/$output_dir"
+    elif [ "$component_name" == "BYOND 2.0" ]; then
+        if ! $HOME/.dotnet/dotnet --list-sdks | grep "9."; then
+            echo "dotnet 9 could not be found. Installing..."
+            ensure_dotnet_install_script
+            ./dotnet-install.sh --version 9.0.304
+        fi
+        $HOME/.dotnet/dotnet build BYOND2.0.sln -c Release
+        mkdir -p "$INSTALL_DIR/$output_dir"
+        cp Client/bin/Release/net9.0/* "$INSTALL_DIR/$output_dir/"
     fi
-    echo "Installing BYOND 2.0..."
-    cd $INSTALL_DIR
-    git clone --branch $BYOND2_BRANCH $BYOND2_URL
-    cd $BYOND2_SRC_DIR
-    $HOME/.dotnet/dotnet build BYOND2.0.sln -c Release
-    mkdir -p $INSTALL_DIR/BYOND2
-    cp Client/bin/Release/net9.0/* $INSTALL_DIR/BYOND2/
+
     cd ..
-    rm -rf $BYOND2_SRC_DIR
-    create_desktop_file "BYOND 2.0" "$INSTALL_DIR/BYOND2/Client"
+    rm -rf "$src_dir"
+    create_desktop_file "$component_name" "$INSTALL_DIR/$output_dir/$exec_name"
 }
 
 create_desktop_file() {
@@ -128,26 +130,23 @@ select_install_dir
 LOG_FILE="/tmp/byond_installer.log"
 rm -f $LOG_FILE
 
+TMP_DIR=$(mktemp -d)
+LOG_FILE="$TMP_DIR/byond_installer.log"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
 for choice in $choices; do
-    if [ "$choice" == "BYOND Launch" ]; then
-        (
-            install_launcher &> $LOG_FILE
-        ) | zenity --progress --title="Installing..." --text="Installing BYOND Launch..." --pulsate --auto-close
-        if [ $? -ne 0 ]; then
-            zenity --error --text="Failed to install BYOND Launch. See $LOG_FILE for details."
-            zenity --text-info --filename=$LOG_FILE --title="Installation Log" --width=800 --height=600
-            exit 1
+    (
+        if [ "$choice" == "BYOND Launch" ]; then
+            install_component "BYOND Launch" "$LAUNCHER_URL" "$LAUNCHER_BRANCH" "$LAUNCHER_SRC_DIR" "Launcher" "Launcher"
+        elif [ "$choice" == "BYOND 2.0" ]; then
+            install_component "BYOND 2.0" "$BYOND2_URL" "$BYOND2_BRANCH" "$BYOND2_SRC_DIR" "BYOND2" "Client"
         fi
-    fi
-    if [ "$choice" == "BYOND 2.0" ]; then
-        (
-            install_byond2 &> $LOG_FILE
-        ) | zenity --progress --title="Installing..." --text="Installing BYOND 2.0..." --pulsate --auto-close
-        if [ $? -ne 0 ]; then
-            zenity --error --text="Failed to install BYOND 2.0. See $LOG_FILE for details."
-            zenity --text-info --filename=$LOG_FILE --title="Installation Log" --width=800 --height=600
-            exit 1
-        fi
+    ) &> "$LOG_FILE" | zenity --progress --title="Installing..." --text="Installing $choice..." --pulsate --auto-close
+
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then
+        zenity --error --text="Failed to install $choice. See $LOG_FILE for details."
+        zenity --text-info --filename="$LOG_FILE" --title="Installation Log for $choice" --width=800 --height=600
+        exit 1
     fi
 done
 zenity --info --text="Installation complete."
