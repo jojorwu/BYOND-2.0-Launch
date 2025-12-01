@@ -1,4 +1,5 @@
 ; NSIS Script for BYOND 2.0 Installer
+!addplugindir "nsis_plugins"
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
 
@@ -7,13 +8,13 @@
 !define LAUNCHER_EXECUTABLE_NAME "Launcher.exe"
 !define BYOND2_EXECUTABLE_NAME "Client.exe"
 
-!define LAUNCHER_URL "https://github.com/jojorwu/BYOND-2.0-Launch/archive/refs/heads/feature/game-launcher.zip"
-!define LAUNCHER_ZIP_NAME "launcher.zip"
-!define LAUNCHER_SRC_DIR "BYOND-2.0-Launch-feature-game-launcher"
+!define LAUNCHER_URL "https://github.com/jojorwu/BYOND-2.0-Launch.git"
+!define LAUNCHER_BRANCH "feature/game-launcher"
+!define LAUNCHER_SRC_DIR "BYOND-2.0-Launch"
 
-!define BYOND2_URL "https://github.com/jojorwu/BYOND-2.0/archive/refs/heads/main.zip"
-!define BYOND2_ZIP_NAME "byond2.zip"
-!define BYOND2_SRC_DIR "BYOND-2.0-main"
+!define BYOND2_URL "https://github.com/jojorwu/BYOND-2.0.git"
+!define BYOND2_BRANCH "main"
+!define BYOND2_SRC_DIR "BYOND-2.0"
 
 ; --- UI Settings ---
 !define MUI_ABORTWARNING
@@ -39,12 +40,45 @@ RequestExecutionLevel admin
 ; --- Functions ---
 Function .onInit
   !insertmacro MUI_LANGDLL_DISPLAY
-  ; Check for .NET SDK
-  nsExec::ExecToLog 'dotnet --version'
+  ; Check for git
+  nsExec::ExecToLog 'git --version'
   Pop $0
   IfErrors 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Microsoft .NET SDK is not installed. Please install it before running this installer."
+    MessageBox MB_OK|MB_ICONSTOP "Git is not installed. Please install it before running this installer."
     Abort
+
+  ; Check for .NET 8 SDK
+  nsExec::ExecToLog 'dotnet --list-sdks | findstr "8."'
+  Pop $0
+  IfErrors install_dotnet8
+
+dotnet9_check:
+  ; Check for .NET 9 SDK
+  nsExec::ExecToLog 'dotnet --list-sdks | findstr "9."'
+  Pop $0
+  IfErrors install_dotnet9
+  Goto done
+
+install_dotnet8:
+  DetailPrint "Downloading .NET 8 SDK..."
+  inetc::get /POPUP "Downloading .NET 8 SDK" "https://dot.net/v1/dotnet-install.ps1" "$PLUGINSDIR\dotnet-install.ps1"
+  Pop $0
+  StrCmp $0 "OK" 0 +2
+    MessageBox MB_OK|MB_ICONSTOP "Failed to download .NET 8 SDK installer script: $0"
+    Abort
+  nsExec::ExecToLog 'powershell -ExecutionPolicy Bypass -File "$PLUGINSDIR\dotnet-install.ps1" -Version 8.0.100 -InstallDir "$PROGRAMFILES\dotnet"'
+  Goto dotnet9_check
+
+install_dotnet9:
+  DetailPrint "Downloading .NET 9 SDK..."
+  inetc::get /POPUP "Downloading .NET 9 SDK" "https://dot.net/v1/dotnet-install.ps1" "$PLUGINSDIR\dotnet-install.ps1"
+  Pop $0
+  StrCmp $0 "OK" 0 +2
+    MessageBox MB_OK|MB_ICONSTOP "Failed to download .NET 9 SDK installer script: $0"
+    Abort
+  nsExec::ExecToLog 'powershell -ExecutionPolicy Bypass -File "$PLUGINSDIR\dotnet-install.ps1" -Version 9.0.304 -InstallDir "$PROGRAMFILES\dotnet"'
+
+done:
 FunctionEnd
 
 Function un.onInit
@@ -54,30 +88,21 @@ FunctionEnd
 ; --- Sections ---
 Section "BYOND Launch" SEC_LAUNCHER
   SetOutPath "$INSTDIR"
-  DetailPrint "Downloading BYOND Launch..."
-  inetc::get /POPUP "Downloading BYOND Launch" "${LAUNCHER_URL}" "$PLUGINSDIR\${LAUNCHER_ZIP_NAME}"
+  DetailPrint "Cloning BYOND Launch..."
+  nsExec::ExecToLog 'git clone --branch "${LAUNCHER_BRANCH}" "${LAUNCHER_URL}" "$INSTDIR\${LAUNCHER_SRC_DIR}"'
   Pop $0
-  StrCmp $0 "OK" 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to download BYOND Launch: $0"
-    Abort
-
-  DetailPrint "Unpacking BYOND Launch..."
-  nsisunz::Unzip "$PLUGINSDIR\${LAUNCHER_ZIP_NAME}" "$INSTDIR"
-  Pop $0
-  StrCmp $0 "success" 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to unpack BYOND Launch: $0"
+  IfErrors 0 +2
+    MessageBox MB_OK|MB_ICONSTOP "Failed to clone BYOND Launch."
     Abort
 
   DetailPrint "Compiling BYOND Launch..."
-  nsExec::ExecToLog '"$INSTDIR\${LAUNCHER_SRC_DIR}\dotnet-install.sh" --version 8.0.100'
-  nsExec::ExecToLog '"$INSTDIR\${LAUNCHER_SRC_DIR}\.dotnet\dotnet" build "$INSTDIR\${LAUNCHER_SRC_DIR}\Launcher\Launcher.csproj" -c Release -o "$INSTDIR\Launcher"'
+  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet" build "$INSTDIR\${LAUNCHER_SRC_DIR}\Launcher\Launcher.csproj" -c Release -o "$INSTDIR\Launcher"'
   Pop $0
   IfErrors 0 +2
     MessageBox MB_OK|MB_ICONSTOP "Failed to compile BYOND Launch."
     Abort
 
   RMDir /r "$INSTDIR\${LAUNCHER_SRC_DIR}"
-  Delete "$PLUGINSDIR\${LAUNCHER_ZIP_NAME}"
 
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BYOND Launch.lnk" "$INSTDIR\Launcher\${LAUNCHER_EXECUTABLE_NAME}"
@@ -85,30 +110,24 @@ SectionEnd
 
 Section "BYOND 2" SEC_BYOND2
   SetOutPath "$INSTDIR"
-  DetailPrint "Downloading BYOND 2.0..."
-  inetc::get /POPUP "Downloading BYOND 2.0" "${BYOND2_URL}" "$PLUGINSDIR\${BYOND2_ZIP_NAME}"
+  DetailPrint "Cloning BYOND 2.0..."
+  nsExec::ExecToLog 'git clone --branch "${BYOND2_BRANCH}" "${BYOND2_URL}" "$INSTDIR\${BYOND2_SRC_DIR}"'
   Pop $0
-  StrCmp $0 "OK" 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to download BYOND 2.0: $0"
-    Abort
-
-  DetailPrint "Unpacking BYOND 2.0..."
-  nsisunz::Unzip "$PLUGINSDIR\${BYOND2_ZIP_NAME}" "$INSTDIR"
-  Pop $0
-  StrCmp $0 "success" 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to unpack BYOND 2.0: $0"
+  IfErrors 0 +2
+    MessageBox MB_OK|MB_ICONSTOP "Failed to clone BYOND 2.0."
     Abort
 
   DetailPrint "Compiling BYOND 2.0..."
-  nsExec::ExecToLog '"$INSTDIR\${BYOND2_SRC_DIR}\dotnet-install.sh" --version 8.0.100'
-  nsExec::ExecToLog '"$INSTDIR\${BYOND2_SRC_DIR}\.dotnet\dotnet" build "$INSTDIR\${BYOND2_SRC_DIR}\Client\Client.csproj" -c Release -o "$INSTDIR\BYOND2"'
+  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet" build "$INSTDIR\${BYOND2_SRC_DIR}\BYOND2.0.sln" -c Release'
   Pop $0
   IfErrors 0 +2
     MessageBox MB_OK|MB_ICONSTOP "Failed to compile BYOND 2.0."
     Abort
 
+  CreateDirectory "$INSTDIR\BYOND2"
+  CopyFiles /SILENT "$INSTDIR\${BYOND2_SRC_DIR}\Client\bin\Release\net9.0\*.*" "$INSTDIR\BYOND2"
+
   RMDir /r "$INSTDIR\${BYOND2_SRC_DIR}"
-  Delete "$PLUGINSDIR\${BYOND2_ZIP_NAME}"
 
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BYOND 2.0.lnk" "$INSTDIR\BYOND2\${BYOND2_EXECUTABLE_NAME}"

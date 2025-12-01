@@ -18,39 +18,29 @@ DOTNET9_PATH="$HOME/.dotnet9/dotnet"
 check_dependencies() {
     echo "Checking for dependencies..."
     if ! command -v git &> /dev/null; then
-        echo "git could not be found. Please install git."
-        exit 1
+        echo "git could not be found. Installing git..."
+        sudo apt-get update && sudo apt-get install -y git
     fi
-    if [ ! -f "$DOTNET8_PATH" ]; then
-        echo "dotnet 8 could not be found. Please install the .NET 8 SDK."
-        exit 1
+    if ! command -v dotnet &> /dev/null || ! dotnet --list-sdks | grep "8."; then
+        echo "dotnet 8 could not be found. Installing the .NET 8 SDK..."
+        wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh
+        chmod +x dotnet-install.sh
+        ./dotnet-install.sh --version 8.0.100
     fi
 }
 
 check_dotnet9() {
-    if [ ! -f "$DOTNET9_PATH" ]; then
+    if ! dotnet --list-sdks | grep "9."; then
         echo "dotnet 9 could not be found. Installing..."
-        ./dotnet-install.sh --version 9.0.304 --install-dir "$HOME/.dotnet9"
+        ./dotnet-install.sh --version 9.0.304
     fi
 }
 
-select_component() {
-    echo "Select the component to install:"
+select_components() {
+    echo "Select the components to install (e.g., 1 2 to install both):"
     echo "1) BYOND Launch"
     echo "2) BYOND 2.0"
-    read -p "Enter your choice [1-2]: " choice
-    case $choice in
-        1)
-            COMPONENT="Launcher"
-            ;;
-        2)
-            COMPONENT="BYOND2"
-            ;;
-        *)
-            echo "Invalid choice. Exiting."
-            exit 1
-            ;;
-    esac
+    read -p "Enter your choice(s): " choices
 }
 
 select_install_dir() {
@@ -67,8 +57,8 @@ install_launcher() {
     cd $INSTALL_DIR
     git clone --branch $LAUNCHER_BRANCH $LAUNCHER_URL
     cd $LAUNCHER_SRC_DIR
-    $DOTNET8_PATH add Launcher/Launcher.csproj package Avalonia.Controls.DataGrid -v 11.0.0
-    $DOTNET8_PATH build Launcher/Launcher.csproj -c Release -o $INSTALL_DIR/Launcher
+    $HOME/.dotnet/dotnet add Launcher/Launcher.csproj package Avalonia.Controls.DataGrid -v 11.0.0
+    $HOME/.dotnet/dotnet build Launcher/Launcher.csproj -c Release -o $INSTALL_DIR/Launcher
     cd ..
     rm -rf $LAUNCHER_SRC_DIR
     create_desktop_file "BYOND Launch" "$INSTALL_DIR/Launcher/Launcher"
@@ -80,7 +70,7 @@ install_byond2() {
     cd $INSTALL_DIR
     git clone --branch $BYOND2_BRANCH $BYOND2_URL
     cd $BYOND2_SRC_DIR
-    $DOTNET9_PATH build BYOND2.0.sln -c Release
+    $HOME/.dotnet/dotnet build BYOND2.0.sln -c Release
     mkdir -p $INSTALL_DIR/BYOND2
     cp Client/bin/Release/net9.0/* $INSTALL_DIR/BYOND2/
     cd ..
@@ -103,13 +93,16 @@ Terminal=false" > $desktop_file
 
 # --- Main ---
 check_dependencies
-select_component
+select_components
 select_install_dir
 
-if [ "$COMPONENT" == "Launcher" ]; then
-    install_launcher
-else
-    install_byond2
-fi
+for choice in $choices; do
+    if [ "$choice" == "1" ]; then
+        install_launcher
+    fi
+    if [ "$choice" == "2" ]; then
+        install_byond2
+    fi
+done
 
 echo "Installation complete."
