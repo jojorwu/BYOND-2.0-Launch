@@ -2,6 +2,7 @@
 !addplugindir "nsis_plugins"
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!include "Sections.nsh"
 
 !define PRODUCT_NAME "BYOND 2.0"
 !define PRODUCT_VERSION "1.0"
@@ -21,11 +22,30 @@
 !define MUI_ICON "installer_files/icon.ico"
 !define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_BITMAP "installer_files/header.bmp"
+!define MUI_WELCOMEFINISHPAGE_BITMAP "installer_files/welcome.bmp"
 !insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "license.txt"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_CONFIRM
 !insertmacro MUI_PAGE_FINISH
+
+Function PageShowReady
+  FindWindow $R0 "#32770" "" $HWNDPARENT
+  GetDlgItem $R1 $R0 1028 ; Static control for summary
+  SendMessage $R1 ${WM_SETTEXT} 0 "STR:Установка будет произведена в:\r\n$INSTDIR\r\n\r\nВыбранные компоненты:\r\n"
+
+  ${ForEachSection} SectionCallback
+FunctionEnd
+
+Function SectionCallback
+  ${If} ${SectionIsSelected} $0
+    FindWindow $R0 "#32770" "" $HWNDPARENT
+    GetDlgItem $R1 $R0 1028
+    SendMessage $R1 ${EM_REPLACESEL} 0 "STR: - ${SEC_NAME}\r\n"
+  ${EndIf}
+FunctionEnd
 
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -54,12 +74,6 @@ Function .onInit
   nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" --list-sdks | findstr "8."'
   Pop $0
   IfErrors install_dotnet8
-
-dotnet9_check:
-  ; Check for .NET 9 SDK
-  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" --list-sdks | findstr "9."'
-  Pop $0
-  IfErrors install_dotnet9
   Goto done
 
 install_dotnet8:
@@ -104,6 +118,22 @@ FunctionEnd
     DetailPrint "Compiling ${NAME}..."
     nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" build "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" -c Release -o "$INSTDIR\${OUTPUT_DIR}"'
   ${ElseIf} ${NAME} == "BYOND 2"
+    ; Check for .NET 9 SDK
+    nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" --list-sdks | findstr "9."'
+    Pop $0
+    IfErrors install_dotnet9_sec
+    Goto publish_byond2
+
+install_dotnet9_sec:
+    DetailPrint "Downloading .NET 9 SDK..."
+    inetc::get /POPUP "Downloading .NET 9 SDK" "https://dot.net/v1/dotnet-install.ps1" "$PLUGINSDIR\dotnet-install.ps1"
+    Pop $0
+    StrCmp $0 "OK" 0 +2
+      MessageBox MB_OK|MB_ICONSTOP "Failed to download .NET 9 SDK installer script: $0"
+      Abort
+    nsExec::ExecToLog 'powershell -ExecutionPolicy Bypass -File "$PLUGINSDIR\dotnet-install.ps1" -Version 9.0.304 -InstallDir "$PROGRAMFILES\dotnet"'
+
+publish_byond2:
     DetailPrint "Publishing ${NAME}..."
     nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" publish "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" -c Release -o "$INSTDIR\${OUTPUT_DIR}"'
   ${EndIf}

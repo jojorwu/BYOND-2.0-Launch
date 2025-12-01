@@ -123,9 +123,15 @@ Terminal=false" > $desktop_file
 }
 
 # --- Main ---
+zenity --info --title="Welcome" --text="Welcome to the BYOND 2.0 and BYOND Launch installer.\n\nThis installer will guide you through the process of installing one or both of these applications."
 check_dependencies
 select_components
 select_install_dir
+
+zenity --question --title="Ready to Install" --text="The installer is ready to begin.\n\nInstallation Directory:\n$INSTALL_DIR\n\nComponents:\n$choices\n\nDo you want to continue?"
+if [ $? -ne 0 ]; then
+    exit 0
+fi
 
 LOG_FILE="/tmp/byond_installer.log"
 rm -f $LOG_FILE
