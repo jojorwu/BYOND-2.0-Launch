@@ -17,6 +17,9 @@
 !define BYOND2_BRANCH "main"
 !define BYOND2_SRC_DIR "BYOND-2.0"
 
+!define GIT_URL "https://github.com/git-for-windows/git/releases/download/v2.33.0.windows.2/Git-2.33.0.2-64-bit.exe"
+!define GIT_INSTALLER_NAME "git_installer.exe"
+
 ; --- UI Settings ---
 !define MUI_ABORTWARNING
 !define MUI_ICON "installer_files/icon.ico"
@@ -24,7 +27,7 @@
 !define MUI_HEADERIMAGE_BITMAP "installer_files/header.bmp"
 !define MUI_WELCOMEFINISHPAGE_BITMAP "installer_files/welcome.bmp"
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "license.txt"
+!insertmacro MUI_PAGE_LICENSE "$(MUI_LANG).txt"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
@@ -56,6 +59,10 @@ FunctionEnd
 ; --- Language Strings ---
 LangString ReadyText ${LANG_RUSSIAN} "Установка будет произведена в:$\r$\n$INSTDIR$\r$\n$\r$\nВыбранные компоненты:"
 LangString ReadyText ${LANG_ENGLISH} "Setup will install to:$\r$\n$INSTDIR$\r$\n$\r$\nSelected components:"
+LangString DescLauncher ${LANG_RUSSIAN} "Игровой лаунчер для подключения к серверам."
+LangString DescLauncher ${LANG_ENGLISH} "Game launcher to connect to servers."
+LangString DescByond2 ${LANG_RUSSIAN} "Игровой клиент BYOND 2.0."
+LangString DescByond2 ${LANG_ENGLISH} "The BYOND 2.0 game client."
 
 ; --- Installer Settings ---
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
@@ -70,9 +77,24 @@ Function .onInit
   ; Check for git
   nsExec::ExecToLog 'git --version'
   Pop $0
-  IfErrors 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Git is not installed. Please install it before running this installer."
+  IfErrors install_git
+  Goto dotnet8_check
+
+install_git:
+  DetailPrint "Downloading Git..."
+  inetc::get /POPUP "Downloading Git" "${GIT_URL}" "$PLUGINSDIR\${GIT_INSTALLER_NAME}"
+  Pop $0
+  StrCmp $0 "OK" 0 +2
+    MessageBox MB_OK|MB_ICONSTOP "Failed to download Git: $0"
     Abort
+  DetailPrint "Installing Git..."
+  ExecWait '"$PLUGINSDIR\${GIT_INSTALLER_NAME}" /SILENT'
+  ; Add git to path for this session
+  ReadEnvStr $0 "PATH"
+  Push "$0;$PROGRAMFILES\Git\cmd"
+  Call AddToPath
+
+dotnet8_check:
 
   ; Check for .NET 8 SDK
   nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" --list-sdks | findstr "8."'
@@ -104,6 +126,11 @@ FunctionEnd
 
 Function un.onInit
   !insertmacro MUI_UNGETLANGUAGE
+FunctionEnd
+
+Function AddToPath
+  Exch $0
+  System::Call 'Kernel32::SetEnvironmentVariableA(t, t) i("PATH", $0).r0'
 FunctionEnd
 
 ; --- Macros ---
@@ -166,6 +193,12 @@ SectionEnd
 Section "BYOND 2" SEC_BYOND2
   !insertmacro InstallComponent "BYOND 2" "${BYOND2_URL}" "${BYOND2_BRANCH}" "${BYOND2_SRC_DIR}" "Client\Client.csproj" "BYOND2" "${BYOND2_EXECUTABLE_NAME}"
 SectionEnd
+
+; --- Descriptions ---
+!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+  !insertmacro MUI_DESCRIPTION_TEXT ${SEC_LAUNCHER} $(DescLauncher)
+  !insertmacro MUI_DESCRIPTION_TEXT ${SEC_BYOND2} $(DescByond2)
+!insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Section -Post
   WriteUninstaller "$INSTDIR\uninstall.exe"
