@@ -123,6 +123,11 @@ Terminal=false" > $desktop_file
 }
 
 # --- Main ---
+if [ -z "$DISPLAY" ]; then
+    echo "This installer requires a graphical environment (X11). Please run it in a desktop session."
+    exit 1
+fi
+
 if [[ "$LANG" == "ru"* ]]; then
     source <(cat <<'EOF'
 _LANG="ru"

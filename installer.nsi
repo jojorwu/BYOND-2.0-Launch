@@ -32,6 +32,8 @@
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_CONFIRM
+!define MUI_FINISHPAGE_RUN
+!define MUI_FINISHPAGE_RUN_FUNCTION "LaunchApplications"
 !insertmacro MUI_PAGE_FINISH
 
 Function PageShowReady
@@ -131,6 +133,15 @@ FunctionEnd
 Function AddToPath
   Exch $0
   System::Call 'Kernel32::SetEnvironmentVariableA(t, t) i("PATH", $0).r0'
+FunctionEnd
+
+Function LaunchApplications
+  ${If} ${SectionIsSelected} ${SEC_LAUNCHER}
+    Exec '"$INSTDIR\Launcher\${LAUNCHER_EXECUTABLE_NAME}"'
+  ${EndIf}
+  ${If} ${SectionIsSelected} ${SEC_BYOND2}
+    Exec '"$INSTDIR\BYOND2\${BYOND2_EXECUTABLE_NAME}"'
+  ${EndIf}
 FunctionEnd
 
 ; --- Macros ---
