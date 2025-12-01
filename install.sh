@@ -11,6 +11,62 @@ BYOND2_BRANCH="main"
 BYOND2_SRC_DIR="BYOND-2.0"
 
 INSTALL_DIR="$HOME/BYOND2.0"
+DOTNET_EXEC="$HOME/.dotnet/dotnet"
+
+# --- Localization ---
+load_strings() {
+    local lang_code="${LANG%%.*}"
+    case "$lang_code" in
+        "ru")
+            source /dev/stdin <<'EOF'
+_LANG="ru"
+TITLE_WELCOME="Добро пожаловать в установщик BYOND"
+TEXT_WELCOME="Этот мастер поможет вам установить BYOND 2.0 и/или BYOND Launch."
+TEXT_PKG_NOT_FOUND="Требуемый пакет '%s' не установлен. Попробовать установить его автоматически? (Требуется sudo)"
+TITLE_COMP_SELECT="Выбор компонентов"
+TEXT_COMP_SELECT="Пожалуйста, выберите компоненты для установки:"
+COL_INSTALL="Установить?"
+COL_COMP_NAME="Имя компонента"
+TITLE_DIR_SELECT="Выберите каталог для установки"
+TITLE_SUMMARY="Итоги установки"
+TEXT_SUMMARY="Будет установлено следующее:\n\n<b>Компоненты:</b>\n- %s\n\n<b>Каталог установки:</b>\n%s"
+TEXT_PROCEED="\n\nВы хотите продолжить?"
+BTN_INSTALL="Установить"
+BTN_CANCEL="Отмена"
+TITLE_INSTALL_PROGRESS="Идет установка"
+TEXT_INSTALL_PROGRESS="Установка %s..."
+TEXT_ERROR="Произошла ошибка при установке %s. Пожалуйста, посмотрите лог для получения подробной информации."
+TITLE_ERROR_LOG="Лог ошибок: %s"
+TITLE_SUCCESS="Установка успешно завершена"
+TEXT_SUCCESS="Выбранные компоненты были успешно установлены."
+EOF
+            ;;
+        *) # Default to English
+            source /dev/stdin <<'EOF'
+_LANG="en"
+TITLE_WELCOME="Welcome to the BYOND Installer"
+TEXT_WELCOME="This wizard will guide you through the installation of BYOND 2.0 and/or BYOND Launch."
+TEXT_PKG_NOT_FOUND="The required package '%s' is not installed. Do you want to try to install it automatically? (Requires sudo)"
+TITLE_COMP_SELECT="Component Selection"
+TEXT_COMP_SELECT="Please select the components you want to install:"
+COL_INSTALL="Install?"
+COL_COMP_NAME="Component Name"
+TITLE_DIR_SELECT="Choose Installation Directory"
+TITLE_SUMMARY="Installation Summary"
+TEXT_SUMMARY="The following will be installed:\n\n<b>Components:</b>\n- %s\n\n<b>Installation Directory:</b>\n%s"
+TEXT_PROCEED="\n\nDo you want to proceed?"
+BTN_INSTALL="Install"
+BTN_CANCEL="Cancel"
+TITLE_INSTALL_PROGRESS="Installation in Progress"
+TEXT_INSTALL_PROGRESS="Installing %s..."
+TEXT_ERROR="An error occurred while installing %s. Please see the log for details."
+TITLE_ERROR_LOG="Error Log: %s"
+TITLE_SUCCESS="Installation Successful"
+TEXT_SUCCESS="The selected components have been successfully installed."
+EOF
+            ;;
+    esac
+}
 
 # --- Functions ---
 install_package() {
@@ -50,10 +106,10 @@ check_dependencies() {
     if ! command -v zenity &> /dev/null; then
         install_package "zenity"
     fi
-    if ! command -v $HOME/.dotnet/dotnet &> /dev/null || ! $HOME/.dotnet/dotnet --list-sdks | grep "8."; then
-        echo "dotnet 8 could not be found. Installing the .NET 8 SDK..."
+    if ! command -v $DOTNET_EXEC &> /dev/null || ! $DOTNET_EXEC --list-sdks | grep -q "^9\."; then
+        echo ".NET 9 SDK could not be found. Installing..."
         ensure_dotnet_install_script
-        ./dotnet-install.sh --version 8.0.100
+        ./dotnet-install.sh --channel 9.0
     fi
 }
 
@@ -84,25 +140,14 @@ install_component() {
     local src_dir="$4"
     local output_dir="$5"
     local exec_name="$6"
+    local proj_path="$7"
 
     echo "Installing $component_name..."
     cd "$INSTALL_DIR"
     git clone --branch "$git_branch" "$git_url" "$src_dir"
     cd "$src_dir"
 
-    if [ "$component_name" == "BYOND Launch" ]; then
-        $HOME/.dotnet/dotnet add Launcher/Launcher.csproj package Avalonia.Controls.DataGrid -v 11.0.0
-        $HOME/.dotnet/dotnet build Launcher/Launcher.csproj -c Release -o "$INSTALL_DIR/$output_dir"
-    elif [ "$component_name" == "BYOND 2.0" ]; then
-        if ! $HOME/.dotnet/dotnet --list-sdks | grep "9."; then
-            echo "dotnet 9 could not be found. Installing..."
-            ensure_dotnet_install_script
-            ./dotnet-install.sh --version 9.0.304
-        fi
-        $HOME/.dotnet/dotnet build BYOND2.0.sln -c Release
-        mkdir -p "$INSTALL_DIR/$output_dir"
-        cp Client/bin/Release/net9.0/* "$INSTALL_DIR/$output_dir/"
-    fi
+    $DOTNET_EXEC publish "$proj_path" -c Release -o "$INSTALL_DIR/$output_dir"
 
     cd ..
     rm -rf "$src_dir"
@@ -128,55 +173,7 @@ if [ -z "$DISPLAY" ]; then
     exit 1
 fi
 
-if [[ "$LANG" == "ru"* ]]; then
-    source <(cat <<'EOF'
-_LANG="ru"
-TITLE_WELCOME="Добро пожаловать в установщик BYOND"
-TEXT_WELCOME="Этот мастер поможет вам установить BYOND 2.0 и/или BYOND Launch."
-TEXT_PKG_NOT_FOUND="Требуемый пакет '%s' не установлен. Попробовать установить его автоматически? (Требуется sudo)"
-TITLE_COMP_SELECT="Выбор компонентов"
-TEXT_COMP_SELECT="Пожалуйста, выберите компоненты для установки:"
-COL_INSTALL="Установить?"
-COL_COMP_NAME="Имя компонента"
-TITLE_DIR_SELECT="Выберите каталог для установки"
-TITLE_SUMMARY="Итоги установки"
-TEXT_SUMMARY="Будет установлено следующее:\n\n<b>Компоненты:</b>\n- %s\n\n<b>Каталог установки:</b>\n%s"
-TEXT_PROCEED="\n\nВы хотите продолжить?"
-BTN_INSTALL="Установить"
-BTN_CANCEL="Отмена"
-TITLE_INSTALL_PROGRESS="Идет установка"
-TEXT_INSTALL_PROGRESS="Установка %s..."
-TEXT_ERROR="Произошла ошибка при установке %s. Пожалуйста, посмотрите лог для получения подробной информации."
-TITLE_ERROR_LOG="Лог ошибок: %s"
-TITLE_SUCCESS="Установка успешно завершена"
-TEXT_SUCCESS="Выбранные компоненты были успешно установлены."
-EOF
-)
-else
-    source <(cat <<'EOF'
-_LANG="en"
-TITLE_WELCOME="Welcome to the BYOND Installer"
-TEXT_WELCOME="This wizard will guide you through the installation of BYOND 2.0 and/or BYOND Launch."
-TEXT_PKG_NOT_FOUND="The required package '%s' is not installed. Do you want to try to install it automatically? (Requires sudo)"
-TITLE_COMP_SELECT="Component Selection"
-TEXT_COMP_SELECT="Please select the components you want to install:"
-COL_INSTALL="Install?"
-COL_COMP_NAME="Component Name"
-TITLE_DIR_SELECT="Choose Installation Directory"
-TITLE_SUMMARY="Installation Summary"
-TEXT_SUMMARY="The following will be installed:\n\n<b>Components:</b>\n- %s\n\n<b>Installation Directory:</b>\n%s"
-TEXT_PROCEED="\n\nDo you want to proceed?"
-BTN_INSTALL="Install"
-BTN_CANCEL="Cancel"
-TITLE_INSTALL_PROGRESS="Installation in Progress"
-TEXT_INSTALL_PROGRESS="Installing %s..."
-TEXT_ERROR="An error occurred while installing %s. Please see the log for details."
-TITLE_ERROR_LOG="Error Log: %s"
-TITLE_SUCCESS="Installation Successful"
-TEXT_SUCCESS="The selected components have been successfully installed."
-EOF
-)
-fi
+load_strings
 
 zenity --info --title="$TITLE_WELCOME" --text="$TEXT_WELCOME" --window-icon="installer_files/icon.ico"
 check_dependencies
@@ -196,9 +193,9 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 for choice in $choices; do
     (
         if [ "$choice" == "BYOND Launch" ]; then
-            install_component "BYOND Launch" "$LAUNCHER_URL" "$LAUNCHER_BRANCH" "$LAUNCHER_SRC_DIR" "Launcher" "Launcher"
+            install_component "BYOND Launch" "$LAUNCHER_URL" "$LAUNCHER_BRANCH" "$LAUNCHER_SRC_DIR" "Launcher" "Launcher" "Launcher/Launcher.csproj"
         elif [ "$choice" == "BYOND 2.0" ]; then
-            install_component "BYOND 2.0" "$BYOND2_URL" "$BYOND2_BRANCH" "$BYOND2_SRC_DIR" "BYOND2" "Client"
+            install_component "BYOND 2.0" "$BYOND2_URL" "$BYOND2_BRANCH" "$BYOND2_SRC_DIR" "BYOND2" "Client" "Client/Client.csproj"
         fi
     ) &> "$LOG_FILE" | zenity --progress --title="$TITLE_INSTALL_PROGRESS" --text="$(printf "$TEXT_INSTALL_PROGRESS" "$choice")" --pulsate --auto-close --window-icon="installer_files/icon.ico"
 
