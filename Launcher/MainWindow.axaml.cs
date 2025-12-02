@@ -18,7 +18,8 @@ namespace Launcher
         private readonly ServerPinger _serverPinger;
         private readonly UpdateService _updateService;
 
-        public ObservableCollection<Server> Servers => _serverManager.Servers;
+        public ObservableCollection<Server> Servers { get; set; }
+        public ObservableCollection<Server> FilteredServers { get; set; }
 
         public MainWindow()
         {
@@ -27,6 +28,9 @@ namespace Launcher
             _serverManager = new ServerManager();
             _serverPinger = new ServerPinger();
             _updateService = new UpdateService();
+
+            Servers = new ObservableCollection<Server>(_serverManager.Servers);
+            FilteredServers = new ObservableCollection<Server>(Servers);
 
             DataContext = this;
 
@@ -42,6 +46,32 @@ namespace Launcher
             this.FindControl<Button>("DeleteButton").Click += DeleteButton_Click;
             this.FindControl<Button>("ConnectButton").Click += ConnectButton_Click;
             this.FindControl<DataGrid>("ServerList").DoubleTapped += ConnectButton_Click;
+
+            var searchBox = this.FindControl<TextBox>("SearchBox");
+            if (searchBox != null) searchBox.TextChanged += (s, e) => ApplyFilter();
+
+            var favoritesFilter = this.FindControl<CheckBox>("FavoritesFilter");
+            if (favoritesFilter != null) favoritesFilter.IsCheckedChanged += (s, e) => ApplyFilter();
+        }
+
+        private void ApplyFilter()
+        {
+            var searchBox = this.FindControl<TextBox>("SearchBox");
+            var favoritesFilter = this.FindControl<CheckBox>("FavoritesFilter");
+
+            var searchText = searchBox?.Text?.ToLower() ?? string.Empty;
+            var favoritesOnly = favoritesFilter?.IsChecked ?? false;
+
+            var filtered = Servers
+                .Where(s => (s.Name.ToLower().Contains(searchText) || s.IpAddress.ToLower().Contains(searchText)) &&
+                            (!favoritesOnly || s.IsFavorite))
+                .ToList();
+
+            FilteredServers.Clear();
+            foreach (var server in filtered)
+            {
+                FilteredServers.Add(server);
+            }
         }
 
         private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
@@ -64,12 +94,13 @@ namespace Launcher
             statusText.Text = "Проверка статуса серверов...";
 
             var tasks = new List<Task>();
-            foreach (var server in _serverManager.Servers)
+            foreach (var server in Servers)
             {
                 tasks.Add(_serverPinger.CheckServerStatusAsync(server));
             }
             await Task.WhenAll(tasks);
 
+            ApplyFilter();
             statusText.Text = "Готово";
             refreshButton.IsEnabled = true;
         }
@@ -82,7 +113,9 @@ namespace Launcher
             if (result)
             {
                 _serverManager.AddServer(addWindow.Server);
+                Servers.Add(addWindow.Server);
                 await _serverPinger.CheckServerStatusAsync(addWindow.Server);
+                ApplyFilter();
             }
         }
 
@@ -114,6 +147,7 @@ namespace Launcher
                 selectedServer.Timeout = editWindow.Server.Timeout;
                 _serverManager.SaveServers();
                 await _serverPinger.CheckServerStatusAsync(selectedServer);
+                ApplyFilter();
             }
         }
 
@@ -129,6 +163,8 @@ namespace Launcher
             if (confirm)
             {
                 _serverManager.RemoveServer(selectedServer);
+                Servers.Remove(selectedServer);
+                ApplyFilter();
             }
         }
 
@@ -162,6 +198,16 @@ namespace Launcher
             catch (Exception ex)
             {
                 await DialogManager.ShowMessageBox(this, "Критическая ошибка", $"Не удалось запустить клиент: {ex.Message}");
+            }
+        }
+
+        private void FavoriteButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (sender is Button { CommandParameter: Server selectedServer })
+            {
+                selectedServer.IsFavorite = !selectedServer.IsFavorite;
+                _serverManager.SaveServers();
+                ApplyFilter();
             }
         }
 
