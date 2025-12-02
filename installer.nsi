@@ -1,70 +1,22 @@
 ; NSIS Script for BYOND 2.0 Installer
-!addplugindir "nsis_plugins"
 !include "MUI2.nsh"
-!include "FileFunc.nsh"
 !include "Sections.nsh"
+!include "LogicLib.nsh"
+!include "WordFunc.nsh"
 
+; --- Add Plugins ---
+!addplugindir "nsis_plugins"
+
+; --- Compression ---
+SetCompressor /SOLID lzma
+
+; --- Defines ---
 !define PRODUCT_NAME "BYOND 2.0"
 !define PRODUCT_VERSION "1.0"
-!define LAUNCHER_EXECUTABLE_NAME "Launcher.exe"
-!define BYOND2_EXECUTABLE_NAME "Client.exe"
-
-!define LAUNCHER_URL "https://github.com/jojorwu/BYOND-2.0-Launch.git"
-!define LAUNCHER_BRANCH "feature/game-launcher"
-!define LAUNCHER_SRC_DIR "BYOND-2.0-Launch"
-
-!define BYOND2_URL "https://github.com/jojorwu/BYOND-2.0.git"
-!define BYOND2_BRANCH "main"
-!define BYOND2_SRC_DIR "BYOND-2.0"
-
-!define GIT_URL "https://github.com/git-for-windows/git/releases/download/v2.33.0.windows.2/Git-2.33.0.2-64-bit.exe"
-!define GIT_INSTALLER_NAME "git_installer.exe"
-
-; --- UI Settings ---
-!define MUI_ABORTWARNING
-!define MUI_ICON "installer_files/icon.ico"
-!define MUI_HEADERIMAGE
-!define MUI_HEADERIMAGE_BITMAP "installer_files/header.bmp"
-!define MUI_WELCOMEFINISHPAGE_BITMAP "installer_files/welcome.bmp"
-!insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "$(MUI_LANG).txt"
-!insertmacro MUI_PAGE_DIRECTORY
-!insertmacro MUI_PAGE_COMPONENTS
-!insertmacro MUI_PAGE_INSTFILES
-!insertmacro MUI_PAGE_CONFIRM
-!define MUI_FINISHPAGE_RUN
-!define MUI_FINISHPAGE_RUN_FUNCTION "LaunchApplications"
-!insertmacro MUI_PAGE_FINISH
-
-Function PageShowReady
-  FindWindow $R0 "#32770" "" $HWNDPARENT
-  GetDlgItem $R1 $R0 1028 ; Static control for summary
-  SendMessage $R1 ${WM_SETTEXT} 0 "$(ReadyText)"
-
-  ${ForEachSection} SectionCallback
-FunctionEnd
-
-Function SectionCallback
-  ${If} ${SectionIsSelected} $0
-    FindWindow $R0 "#32770" "" $HWNDPARENT
-    GetDlgItem $R1 $R0 1028
-    SendMessage $R1 ${EM_REPLACESEL} 0 "STR: - ${SEC_NAME}\r\n"
-  ${EndIf}
-FunctionEnd
-
-!insertmacro MUI_UNPAGE_CONFIRM
-!insertmacro MUI_UNPAGE_INSTFILES
-
-!insertmacro MUI_LANGUAGE "Russian"
-!insertmacro MUI_LANGUAGE "English"
-
-; --- Language Strings ---
-LangString ReadyText ${LANG_RUSSIAN} "Установка будет произведена в:$\r$\n$INSTDIR$\r$\n$\r$\nВыбранные компоненты:"
-LangString ReadyText ${LANG_ENGLISH} "Setup will install to:$\r$\n$INSTDIR$\r$\n$\r$\nSelected components:"
-LangString DescLauncher ${LANG_RUSSIAN} "Игровой лаунчер для подключения к серверам."
-LangString DescLauncher ${LANG_ENGLISH} "Game launcher to connect to servers."
-LangString DescByond2 ${LANG_RUSSIAN} "Игровой клиент BYOND 2.0."
-LangString DescByond2 ${LANG_ENGLISH} "The BYOND 2.0 game client."
+!define DOTNET_RUNTIME_URL "https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-desktop-9.0.11-windows-x64-installer"
+!define MUI_PAGE_CUSTOMFUNCTION_PRE fn_CreateDesktopShortcut_pre
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW fn_CreateDesktopShortcut_show
+!define MUI_PAGE_CUSTOMFUNCTION_LEAVE fn_CreateDesktopShortcut_leave
 
 ; --- Installer Settings ---
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
@@ -73,143 +25,170 @@ InstallDir "$PROGRAMFILES64\${PRODUCT_NAME}"
 InstallDirRegKey HKLM "Software\${PRODUCT_NAME}" "Install_Dir"
 RequestExecutionLevel admin
 
-; --- Functions ---
+; --- UI Settings ---
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "English.txt"
+!insertmacro MUI_PAGE_DIRECTORY
+Page custom fn_CreateDesktopShortcut_pre fn_CreateDesktopShortcut_show fn_CreateDesktopShortcut_leave
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+
+; --- Languages ---
+!insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "Russian"
+
+; --- Language Strings ---
+LangString DOTNET_INSTALL_PROMPT ${LANG_ENGLISH} "This application requires .NET 9 Desktop Runtime. It was not found on your system. Do you want to download and install it now?"
+LangString DOTNET_INSTALL_PROMPT ${LANG_RUSSIAN} "Этому приложению требуется .NET 9 Desktop Runtime. Он не был найден в вашей системе. Вы хотите скачать и установить его сейчас?"
+LangString DOTNET_DOWNLOADING ${LANG_ENGLISH} "Downloading .NET 9 Desktop Runtime..."
+LangString DOTNET_DOWNLOADING ${LANG_RUSSIAN} "Загрузка .NET 9 Desktop Runtime..."
+LangString DOTNET_INSTALLING ${LANG_ENGLISH} "Installing .NET 9 Desktop Runtime..."
+LangString DOTNET_INSTALLING ${LANG_RUSSIAN} "Установка .NET 9 Desktop Runtime..."
+LangString DOTNET_INSTALL_FAILED ${LANG_ENGLISH} ".NET 9 Desktop Runtime installation failed. Please install it manually and try again."
+LangString DOTNET_INSTALL_FAILED ${LANG_RUSSIAN} "Не удалось установить .NET 9 Desktop Runtime. Пожалуйста, установите его вручную и попробуйте снова."
+LangString DESKTOP_SHORTCUT_TITLE ${LANG_ENGLISH} "Create Desktop Shortcuts"
+LangString DESKTOP_SHORTCUT_TITLE ${LANG_RUSSIAN} "Создать ярлыки на рабочем столе"
+LangString DESKTOP_SHORTCUT_TEXT ${LANG_ENGLISH} "Create desktop shortcuts for:"
+LangString DESKTOP_SHORTCUT_TEXT ${LANG_RUSSIAN} "Создать ярлыки на рабочем столе для:"
+LangString DESKTOP_SHORTCUT_LAUNCHER ${LANG_ENGLISH} "BYOND Launcher"
+LangString DESKTOP_SHORTCUT_LAUNCHER ${LANG_RUSSIAN} "BYOND Launcher"
+LangString DESKTOP_SHORTCUT_CLIENT ${LANG_ENGLISH} "BYOND Client"
+LangString DESKTOP_SHORTCUT_CLIENT ${LANG_RUSSIAN} "Клиент BYOND"
+
+Var hCreateDesktopShortcutDialog
+Var hCheckboxLauncher
+Var hCheckboxClient
+Var bCreateDesktopShortcutLauncher
+Var bCreateDesktopShortcutClient
+
+Function fn_CreateDesktopShortcut_pre
+  ; Set default values
+  StrCpy $bCreateDesktopShortcutLauncher ${BST_CHECKED}
+  StrCpy $bCreateDesktopShortcutClient ${BST_CHECKED}
+FunctionEnd
+
+Function fn_CreateDesktopShortcut_show
+  nsDialogs::Create 1018
+  Pop $hCreateDesktopShortcutDialog
+
+  ${If} $hCreateDesktopShortcutDialog == error
+    Abort
+  ${EndIf}
+
+  !insertmacro MUI_HEADER_TEXT "$(DESKTOP_SHORTCUT_TITLE)" "$(DESKTOP_SHORTCUT_TEXT)"
+
+  ${NSD_CreateCheckbox} 10u 20u 80% 12u "$(DESKTOP_SHORTCUT_LAUNCHER)"
+  Pop $hCheckboxLauncher
+  ${NSD_SetState} $hCheckboxLauncher $bCreateDesktopShortcutLauncher
+
+  ${NSD_CreateCheckbox} 10u 40u 80% 12u "$(DESKTOP_SHORTCUT_CLIENT)"
+  Pop $hCheckboxClient
+  ${NSD_SetState} $hCheckboxClient $bCreateDesktopShortcutClient
+
+  nsDialogs::Show
+FunctionEnd
+
+Function fn_CreateDesktopShortcut_leave
+  ${NSD_GetState} $hCheckboxLauncher $bCreateDesktopShortcutLauncher
+  ${NSD_GetState} $hCheckboxClient $bCreateDesktopShortcutClient
+FunctionEnd
+
 Function .onInit
-  !insertmacro MUI_LANGDLL_DISPLAY
-  ; Check for git
-  nsExec::ExecToLog 'git --version'
+  ; Check for .NET 9 Desktop Runtime
+  Var /GLOBAL DotNet9RuntimeInstalled
+  StrCpy $DotNet9RuntimeInstalled 0
+
+  ; Check HKLM
+  Push HKLM
+  Call CheckDotNetRuntimeInHive
   Pop $0
-  IfErrors install_git
-  Goto dotnet8_check
-
-install_git:
-  DetailPrint "Downloading Git..."
-  inetc::get /POPUP "Downloading Git" "${GIT_URL}" "$PLUGINSDIR\${GIT_INSTALLER_NAME}"
-  Pop $0
-  StrCmp $0 "OK" 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to download Git: $0"
-    Abort
-  DetailPrint "Installing Git..."
-  ExecWait '"$PLUGINSDIR\${GIT_INSTALLER_NAME}" /SILENT'
-  ; Add git to path for this session
-  ReadEnvStr $0 "PATH"
-  Push "$0;$PROGRAMFILES\Git\cmd"
-  Call AddToPath
-
-dotnet8_check:
-
-  ; Check for .NET 8 SDK
-  nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" --list-sdks | findstr "8."'
-  Pop $0
-  IfErrors install_dotnet8
-  Goto done
-
-install_dotnet8:
-  DetailPrint "Downloading .NET 8 SDK..."
-  inetc::get /POPUP "Downloading .NET 8 SDK" "https://dot.net/v1/dotnet-install.ps1" "$PLUGINSDIR\dotnet-install.ps1"
-  Pop $0
-  StrCmp $0 "OK" 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to download .NET 8 SDK installer script: $0"
-    Abort
-  nsExec::ExecToLog 'powershell -ExecutionPolicy Bypass -File "$PLUGINSDIR\dotnet-install.ps1" -Version 8.0.100 -InstallDir "$PROGRAMFILES\dotnet"'
-  Goto dotnet9_check
-
-install_dotnet9:
-  DetailPrint "Downloading .NET 9 SDK..."
-  inetc::get /POPUP "Downloading .NET 9 SDK" "https://dot.net/v1/dotnet-install.ps1" "$PLUGINSDIR\dotnet-install.ps1"
-  Pop $0
-  StrCmp $0 "OK" 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to download .NET 9 SDK installer script: $0"
-    Abort
-  nsExec::ExecToLog 'powershell -ExecutionPolicy Bypass -File "$PLUGINSDIR\dotnet-install.ps1" -Version 9.0.304 -InstallDir "$PROGRAMFILES\dotnet"'
-
-done:
-FunctionEnd
-
-Function un.onInit
-  !insertmacro MUI_UNGETLANGUAGE
-FunctionEnd
-
-Function AddToPath
-  Exch $0
-  System::Call 'Kernel32::SetEnvironmentVariableA(t, t) i("PATH", $0).r0'
-FunctionEnd
-
-Function LaunchApplications
-  ${If} ${SectionIsSelected} ${SEC_LAUNCHER}
-    Exec '"$INSTDIR\Launcher\${LAUNCHER_EXECUTABLE_NAME}"'
+  ${If} $0 = 1
+    StrCpy $DotNet9RuntimeInstalled 1
+    Goto Done
   ${EndIf}
-  ${If} ${SectionIsSelected} ${SEC_BYOND2}
-    Exec '"$INSTDIR\BYOND2\${BYOND2_EXECUTABLE_NAME}"'
+
+  ; Check HKCU
+  Push HKCU
+  Call CheckDotNetRuntimeInHive
+  Pop $0
+  ${If} $0 = 1
+    StrCpy $DotNet9RuntimeInstalled 1
+    Goto Done
+  ${EndIf}
+
+  Done:
+  ${If} $DotNet9RuntimeInstalled = 0
+    MessageBox MB_YESNO|MB_ICONQUESTION "$(DOTNET_INSTALL_PROMPT)" IDYES InstallDotNet
+    Abort
+
+    InstallDotNet:
+      InitPluginsDir
+      DetailPrint "$(DOTNET_DOWNLOADING)"
+      InetC::get /POPUP /CAPTION "$(DOTNET_DOWNLOADING)" /BANNER_TEXT "$(DOTNET_DOWNLOADING)" "${DOTNET_RUNTIME_URL}" "$PLUGINSDIR\dotnet-runtime.exe"
+      Pop $0
+      ${If} $0 != "OK"
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Download failed: $0"
+        Abort
+      ${EndIf}
+
+      DetailPrint "$(DOTNET_INSTALLING)"
+      ExecWait '"$PLUGINSDIR\dotnet-runtime.exe" /quiet /norestart' $0
+
+      ${If} $0 != 0
+        MessageBox MB_OK|MB_ICONEXCLAMATION "$(DOTNET_INSTALL_FAILED)"
+        Abort
+      ${EndIf}
   ${EndIf}
 FunctionEnd
 
-; --- Macros ---
-!macro InstallComponent NAME URL BRANCH SRC_DIR CSPROJ_PATH OUTPUT_DIR EXEC_NAME
+Function CheckDotNetRuntimeInHive
+  Exch $R3 ; Hive Root
+  StrCpy $R1 0
+  Loop:
+    EnumRegKey $R0 $R3 "SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App" $R1
+    ${If} $R0 == ""
+      Push 0
+      Exch $R3
+      Return
+    ${EndIf}
+
+    ${If} $R0 S~ "9.*"
+      Push 1
+      Exch $R3
+      Return
+    ${EndIf}
+
+    IntOp $R1 $R1 + 1
+    Goto Loop
+FunctionEnd
+
+; --- Main Section ---
+Section "BYOND 2.0"
   SetOutPath "$INSTDIR"
-  SetDetailsPrint textonly
-  DetailPrint "Installing ${NAME}..."
-  SetDetailsPrint listonly
-  DetailPrint "Cloning repository..."
-  nsExec::ExecToLog 'git clone --branch "${BRANCH}" "${URL}" "$INSTDIR\${SRC_DIR}"'
-  Pop $0
-  IfErrors 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to clone ${NAME}."
-    Abort
 
-  ${If} ${NAME} == "BYOND Launch"
-    DetailPrint "Adding required packages..."
-    nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" add "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" package Avalonia.Controls.DataGrid -v 11.0.0'
-    DetailPrint "Compiling project..."
-    nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" build "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" -c Release -o "$INSTDIR\${OUTPUT_DIR}"'
-  ${ElseIf} ${NAME} == "BYOND 2"
-    DetailPrint "Checking for .NET 9 SDK..."
-    nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" --list-sdks | findstr "9."'
-    Pop $0
-    IfErrors install_dotnet9_sec
-    Goto publish_byond2
+  ; Copy files
+  SetOutPath "$INSTDIR\Launcher"
+  File /r "dist\Launcher\"
+  SetOutPath "$INSTDIR\Client"
+  File /r "dist\Client\"
 
-install_dotnet9_sec:
-    DetailPrint "Downloading .NET 9 SDK..."
-    inetc::get /POPUP "Downloading .NET 9 SDK" "https://dot.net/v1/dotnet-install.ps1" "$PLUGINSDIR\dotnet-install.ps1"
-    Pop $0
-    StrCmp $0 "OK" 0 +2
-      MessageBox MB_OK|MB_ICONSTOP "Failed to download .NET 9 SDK installer script: $0"
-      Abort
-    DetailPrint "Installing .NET 9 SDK..."
-    nsExec::ExecToLog 'powershell -ExecutionPolicy Bypass -File "$PLUGINSDIR\dotnet-install.ps1" -Version 9.0.304 -InstallDir "$PROGRAMFILES\dotnet"'
-
-publish_byond2:
-    DetailPrint "Publishing project..."
-    nsExec::ExecToLog '"$PROGRAMFILES\dotnet\dotnet.exe" publish "$INSTDIR\${SRC_DIR}\${CSPROJ_PATH}" -c Release -o "$INSTDIR\${OUTPUT_DIR}"'
-  ${EndIf}
-  Pop $0
-  IfErrors 0 +2
-    MessageBox MB_OK|MB_ICONSTOP "Failed to compile/publish ${NAME}."
-    Abort
-
-  DetailPrint "Cleaning up..."
-  RMDir /r "$INSTDIR\${SRC_DIR}"
-
-  DetailPrint "Creating shortcuts..."
+  ; Create Start Menu shortcuts
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${NAME}.lnk" "$INSTDIR\${OUTPUT_DIR}\${EXEC_NAME}"
-!macroend
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BYOND Launcher.lnk" "$INSTDIR\Launcher\Launcher.exe"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BYOND Client.lnk" "$INSTDIR\Client\Client.exe"
 
-; --- Sections ---
-Section "BYOND Launch" SEC_LAUNCHER
-  !insertmacro InstallComponent "BYOND Launch" "${LAUNCHER_URL}" "${LAUNCHER_BRANCH}" "${LAUNCHER_SRC_DIR}" "Launcher\Launcher.csproj" "Launcher" "${LAUNCHER_EXECUTABLE_NAME}"
+  ; Create Desktop shortcuts if selected
+  ${If} $bCreateDesktopShortcutLauncher == ${BST_CHECKED}
+    CreateShortCut "$DESKTOP\BYOND Launcher.lnk" "$INSTDIR\Launcher\Launcher.exe"
+  ${EndIf}
+  ${If} $bCreateDesktopShortcutClient == ${BST_CHECKED}
+    CreateShortCut "$DESKTOP\BYOND Client.lnk" "$INSTDIR\Client\Client.exe"
+  ${EndIf}
+
 SectionEnd
-
-Section "BYOND 2" SEC_BYOND2
-  !insertmacro InstallComponent "BYOND 2" "${BYOND2_URL}" "${BYOND2_BRANCH}" "${BYOND2_SRC_DIR}" "Client\Client.csproj" "BYOND2" "${BYOND2_EXECUTABLE_NAME}"
-SectionEnd
-
-; --- Descriptions ---
-!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-  !insertmacro MUI_DESCRIPTION_TEXT ${SEC_LAUNCHER} $(DescLauncher)
-  !insertmacro MUI_DESCRIPTION_TEXT ${SEC_BYOND2} $(DescByond2)
-!insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Section -Post
   WriteUninstaller "$INSTDIR\uninstall.exe"
@@ -220,12 +199,19 @@ SectionEnd
 
 ; --- Uninstaller ---
 Section "Uninstall"
-  Delete "$INSTDIR\uninstall.exe"
-  RMDir /r "$INSTDIR\Launcher"
-  RMDir /r "$INSTDIR\BYOND2"
-  RMDir /r "$INSTDIR"
-  Delete "$SMPROGRAMS\${PRODUCT_NAME}\*.*"
+  ; Remove Start Menu shortcuts
+  Delete "$SMPROGRAMS\${PRODUCT_NAME}\BYOND Launcher.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT_NAME}\BYOND Client.lnk"
   RMDir "$SMPROGRAMS\${PRODUCT_NAME}"
+
+  ; Remove Desktop shortcuts
+  Delete "$DESKTOP\BYOND Launcher.lnk"
+  Delete "$DESKTOP\BYOND Client.lnk"
+
+  ; Remove main directory
+  RMDir /r "$INSTDIR"
+
+  ; Remove registry keys
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
   DeleteRegKey HKLM "Software\${PRODUCT_NAME}"
 SectionEnd
