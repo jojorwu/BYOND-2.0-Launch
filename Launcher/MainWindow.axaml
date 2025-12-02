@@ -5,12 +5,16 @@
         xmlns:local="using:Launcher"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Launcher.MainWindow"
+>
+    <Window.Resources>
+        <local:FavoriteToColorConverter x:Key="FavoriteToColorConverter"/>
+    </Window.Resources>
         x:DataType="local:MainWindow"
         Title="BYOND 2.0 Launcher"
         Width="850" Height="500"
         WindowStartupLocation="CenterScreen">
 
-    <Grid RowDefinitions="Auto, *, Auto" Margin="15">
+    <Grid RowDefinitions="Auto, Auto, *, Auto" Margin="15">
 
         <!-- Top Bar with Title and Refresh Button -->
         <Border Grid.Row="0" Margin="0,0,0,10" Padding="10" CornerRadius="5">
@@ -20,20 +24,37 @@
             </Grid>
         </Border>
 
+        <!-- Filter Panel -->
+        <Border Grid.Row="1" Padding="10" Margin="0,0,0,10" CornerRadius="5">
+            <StackPanel Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                <TextBlock Text="Поиск:" VerticalAlignment="Center"/>
+                <TextBox Name="SearchBox" Watermark="Поиск по названию или IP..." Width="250"/>
+                <CheckBox Name="FavoritesFilter" Content="Только избранные"/>
+                <CheckBox Name="AutoRefreshCheckBox" Content="Автообновление" IsChecked="True"/>
+            </StackPanel>
+        </Border>
+
         <!-- Server List -->
-        <DataGrid Grid.Row="1" Name="ServerList" AutoGenerateColumns="False" IsReadOnly="True"
-                  SelectionMode="Single" CanUserResizeColumns="True" CanUserSortColumns="False"
-                  ItemsSource="{Binding Servers}">
+        <DataGrid Grid.Row="2" Name="ServerList" AutoGenerateColumns="False" IsReadOnly="True"
+                  SelectionMode="Single" CanUserResizeColumns="True" CanUserSortColumns="True"
+                  ItemsSource="{Binding FilteredServers}">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="*"/>
-                <DataGridTextColumn Header="IP Адрес" Binding="{Binding IpAddress}" Width="2*"/>
-                <DataGridTextColumn Header="Порт" Binding="{Binding Port}" Width="Auto"/>
-                <DataGridTextColumn Header="Статус" Binding="{Binding Status}" Width="Auto"/>
-                <DataGridTextColumn Header="Пинг" Binding="{Binding Ping}" Width="Auto"/>
-                <DataGridTemplateColumn Header="Избранное">
+                <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="*" SortMemberPath="Name"/>
+                <DataGridTextColumn Header="IP Адрес" Binding="{Binding IpAddress}" Width="2*" SortMemberPath="IpAddress"/>
+                <DataGridTextColumn Header="Порт" Binding="{Binding Port}" Width="Auto" SortMemberPath="Port"/>
+                <DataGridTextColumn Header="Статус" Binding="{Binding Status}" Width="Auto" SortMemberPath="Status"/>
+                <DataGridTextColumn Header="Пинг" Binding="{Binding Ping}" Width="Auto" SortMemberPath="Ping"/>
+                <DataGridTemplateColumn Header="Избранное" SortMemberPath="IsFavorite">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="local:Server">
-                            <TextBlock Text="★" IsVisible="{Binding IsFavorite}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16"/>
+                            <Button Content="★"
+                                    CommandParameter="{Binding}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Foreground="{Binding IsFavorite, Converter={StaticResource FavoriteToColorConverter}}"
+                                    Click="FavoriteButton_Click"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
@@ -41,7 +62,7 @@
         </DataGrid>
 
         <!-- Bottom Bar with Action Buttons and Status -->
-        <Border Grid.Row="2" Margin="0,10,0,0" Padding="10" CornerRadius="5">
+        <Border Grid.Row="3" Margin="0,10,0,0" Padding="10" CornerRadius="5">
             <Grid ColumnDefinitions="*, Auto, Auto, Auto, Auto">
                 <TextBlock Grid.Column="0" Name="StatusText" Text="Готово" VerticalAlignment="Center" Opacity="0.7"/>
 

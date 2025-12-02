@@ -3,22 +3,26 @@ using Avalonia.Interactivity;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using Launcher.Services;
 
 namespace Launcher
 {
     public partial class MainWindow : Window
     {
+        private readonly DispatcherTimer _refreshTimer;
         private readonly ServerManager _serverManager;
         private readonly ServerPinger _serverPinger;
         private readonly UpdateService _updateService;
 
-        public ObservableCollection<Server> Servers => _serverManager.Servers;
+        public ObservableCollection<Server> Servers { get; set; }
+        public ListCollectionView FilteredServers { get; set; }
 
         public MainWindow()
         {
@@ -28,7 +32,16 @@ namespace Launcher
             _serverPinger = new ServerPinger();
             _updateService = new UpdateService();
 
+            Servers = new ObservableCollection<Server>(_serverManager.Servers);
+            FilteredServers = new ListCollectionView(Servers);
+
             DataContext = this;
+
+            _refreshTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(30)
+            };
+            _refreshTimer.Tick += async (s, e) => await RefreshAllServersAsync();
 
             SetupEventHandlers();
         }
@@ -42,10 +55,52 @@ namespace Launcher
             this.FindControl<Button>("DeleteButton").Click += DeleteButton_Click;
             this.FindControl<Button>("ConnectButton").Click += ConnectButton_Click;
             this.FindControl<DataGrid>("ServerList").DoubleTapped += ConnectButton_Click;
+
+            var searchBox = this.FindControl<TextBox>("SearchBox");
+            if (searchBox != null) searchBox.TextChanged += (s, e) => ApplyFilter();
+
+            var favoritesFilter = this.FindControl<CheckBox>("FavoritesFilter");
+            if (favoritesFilter != null) favoritesFilter.IsCheckedChanged += (s, e) => ApplyFilter();
+
+            var autoRefreshCheckBox = this.FindControl<CheckBox>("AutoRefreshCheckBox");
+            if (autoRefreshCheckBox != null)
+            {
+                autoRefreshCheckBox.IsCheckedChanged += (s, e) =>
+                {
+                    if (autoRefreshCheckBox.IsChecked == true)
+                    {
+                        _refreshTimer.Start();
+                    }
+                    else
+                    {
+                        _refreshTimer.Stop();
+                    }
+                };
+            }
+        }
+
+        private void ApplyFilter()
+        {
+            var searchBox = this.FindControl<TextBox>("SearchBox");
+            var favoritesFilter = this.FindControl<CheckBox>("FavoritesFilter");
+
+            var searchText = searchBox?.Text?.ToLower() ?? string.Empty;
+            var favoritesOnly = favoritesFilter?.IsChecked ?? false;
+
+            FilteredServers.Filter = (item) =>
+            {
+                if (item is Server server)
+                {
+                    return (server.Name.ToLower().Contains(searchText) || server.IpAddress.ToLower().Contains(searchText)) &&
+                           (!favoritesOnly || server.IsFavorite);
+                }
+                return false;
+            };
         }
 
         private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
         {
+            _refreshTimer.Start();
             await RefreshAllServersAsync();
             await CheckForUpdatesAsync();
         }
@@ -64,12 +119,13 @@ namespace Launcher
             statusText.Text = "Проверка статуса серверов...";
 
             var tasks = new List<Task>();
-            foreach (var server in _serverManager.Servers)
+            foreach (var server in Servers)
             {
                 tasks.Add(_serverPinger.CheckServerStatusAsync(server));
             }
             await Task.WhenAll(tasks);
 
+            ApplyFilter();
             statusText.Text = "Готово";
             refreshButton.IsEnabled = true;
         }
@@ -82,7 +138,9 @@ namespace Launcher
             if (result)
             {
                 _serverManager.AddServer(addWindow.Server);
+                Servers.Add(addWindow.Server);
                 await _serverPinger.CheckServerStatusAsync(addWindow.Server);
+                ApplyFilter();
             }
         }
 
@@ -114,6 +172,7 @@ namespace Launcher
                 selectedServer.Timeout = editWindow.Server.Timeout;
                 _serverManager.SaveServers();
                 await _serverPinger.CheckServerStatusAsync(selectedServer);
+                ApplyFilter();
             }
         }
 
@@ -129,6 +188,8 @@ namespace Launcher
             if (confirm)
             {
                 _serverManager.RemoveServer(selectedServer);
+                Servers.Remove(selectedServer);
+                ApplyFilter();
             }
         }
 
@@ -162,6 +223,16 @@ namespace Launcher
             catch (Exception ex)
             {
                 await DialogManager.ShowMessageBox(this, "Критическая ошибка", $"Не удалось запустить клиент: {ex.Message}");
+            }
+        }
+
+        private void FavoriteButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (sender is Button { CommandParameter: Server selectedServer })
+            {
+                selectedServer.IsFavorite = !selectedServer.IsFavorite;
+                _serverManager.SaveServers();
+                ApplyFilter();
             }
         }
 
